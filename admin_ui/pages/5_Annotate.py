@@ -88,9 +88,16 @@ except Exception as e:
 
 native_w = page["image_width"]
 native_h = page["image_height"]
-MAX_W = 900
-scale = min(1.0, MAX_W / native_w)
-disp_w = int(native_w * scale)
+
+zoom_key = f"zoom_{tid}_{page['page_index']}"
+default_zoom = min(1200, native_w)
+disp_w = st.slider(
+    "Canvas width (px) — use browser scroll for overflow",
+    min_value=500, max_value=min(2000, native_w),
+    value=st.session_state.get(zoom_key, default_zoom),
+    step=50, key=zoom_key,
+)
+scale = disp_w / native_w
 disp_h = int(native_h * scale)
 
 st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
@@ -170,23 +177,21 @@ if need_overlay:
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
-col_canvas, col_form = st.columns([3, 2])
+canvas_result = st_canvas(
+    fill_color="rgba(255, 165, 0, 0.2)",
+    stroke_width=2,
+    stroke_color="#FF0000",
+    background_image=bg_img,
+    update_streamlit=True,
+    height=disp_h,
+    width=disp_w,
+    drawing_mode="rect",
+    key=f"canvas_{tid}_{page['page_index']}",
+)
 
-with col_canvas:
-    canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.2)",
-        stroke_width=2,
-        stroke_color="#FF0000",
-        background_image=bg_img,
-        update_streamlit=True,
-        height=disp_h,
-        width=disp_w,
-        drawing_mode="rect",
-        key=f"canvas_{tid}_{page['page_index']}",
-    )
-
-with col_form:
-    st.subheader("Convert last rect → field")
+st.divider()
+st.subheader("Convert last rect → field")
+with st.container():
     rects = []
     if canvas_result.json_data and canvas_result.json_data.get("objects"):
         rects = [o for o in canvas_result.json_data["objects"]
