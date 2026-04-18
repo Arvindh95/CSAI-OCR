@@ -48,13 +48,20 @@ with st.form("create"):
 st.divider()
 
 st.header("Client operations")
-cid = st.session_state.get("selected_client_id")
-cid = st.number_input("Client ID", min_value=1, step=1, value=int(cid) if cid else 1)
+stored = st.session_state.get("selected_client_id")
+cid = st.number_input("Client ID", min_value=1, step=1,
+                      value=int(stored) if stored else 1)
 cid = int(cid)
 
 try:
     client = get_client(cid)
     plan = get_plan(cid)
+except httpx.HTTPStatusError as e:
+    if e.response.status_code == 404:
+        st.info(f"No client #{cid}. Create one above or enter a valid ID.")
+    else:
+        st.error(_err(e))
+    st.stop()
 except Exception as e:
     st.error(_err(e))
     st.stop()
