@@ -1,0 +1,23 @@
+[Unit]
+Description=CSAI-OCR API
+After=network.target
+
+[Service]
+User=claudeuser
+WorkingDirectory=/opt/ocr-saas
+ExecStart=/opt/ocr-saas/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8003 --workers 1
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/ocr-saas /var/log/ocr /tmp
+
+[Install]
+WantedBy=multi-user.target

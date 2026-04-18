@@ -1,0 +1,21 @@
+[Unit]
+Description=CSAI-OCR Streamlit UI
+After=ocr-api.service
+
+[Service]
+User=claudeuser
+WorkingDirectory=/opt/ocr-saas
+ExecStart=/opt/ocr-saas/venv/bin/streamlit run ssm_ui.py --server.port 8503 --server.address 127.0.0.1 --server.headless true
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/ocr-saas /var/log/ocr /tmp
+
+[Install]
+WantedBy=multi-user.target
