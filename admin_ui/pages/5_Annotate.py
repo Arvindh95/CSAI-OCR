@@ -93,30 +93,6 @@ scale = 1.0
 disp_w = native_w
 disp_h = native_h
 
-st.markdown(
-    f"""
-    <style>
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) {{
-        overflow-x: auto !important;
-        overflow-y: auto !important;
-    }}
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) div[data-testid="stVerticalBlock"] {{
-        width: max-content !important;
-        min-width: 100% !important;
-    }}
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) div[data-testid="stElementContainer"] {{
-        width: {disp_w}px !important;
-        max-width: none !important;
-    }}
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) iframe {{
-        width: {disp_w}px !important;
-        min-width: {disp_w}px !important;
-        max-width: none !important;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 st.caption(f"Native {native_w}×{native_h}. Middle-click + drag to pan. "
            "Scrollbars also available.")
@@ -208,44 +184,64 @@ with st.container(height=720, border=True):
         key=f"canvas_{tid}_{page['page_index']}",
     )
 components.html(
-    """
+    f"""
     <script>
-    (function setup() {
+    (function setup() {{
+        const DISP_W = {disp_w};
         const pdoc = window.parent.document;
-        const iframes = pdoc.querySelectorAll('iframe[title*="drawable_canvas" i]');
-        const iframe = iframes[iframes.length - 1];
-        if (!iframe) { setTimeout(setup, 250); return; }
+        const iframes = Array.from(pdoc.querySelectorAll('iframe'));
+        const iframe = iframes.find(f => (f.title || '').toLowerCase().includes('canvas'));
+        if (!iframe) {{ setTimeout(setup, 250); return; }}
+
+        iframe.style.setProperty('width', DISP_W + 'px', 'important');
+        iframe.style.setProperty('min-width', DISP_W + 'px', 'important');
+        iframe.style.setProperty('max-width', 'none', 'important');
+
         const wrapper = iframe.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
-        if (!wrapper) { setTimeout(setup, 250); return; }
+        if (wrapper) {{
+            wrapper.style.setProperty('overflow', 'auto', 'important');
+        }}
+        let p = iframe.parentElement;
+        let depth = 0;
+        while (p && p !== wrapper && depth < 8) {{
+            p.style.setProperty('width', 'max-content', 'important');
+            p.style.setProperty('min-width', '100%', 'important');
+            p.style.setProperty('max-width', 'none', 'important');
+            p.style.setProperty('overflow', 'visible', 'important');
+            p = p.parentElement;
+            depth++;
+        }}
+
         const idoc = iframe.contentDocument;
-        if (!idoc || !idoc.body) { setTimeout(setup, 250); return; }
+        if (!idoc || !idoc.body) {{ setTimeout(setup, 250); return; }}
         if (idoc.__csaiPan) return;
         idoc.__csaiPan = true;
         let panning = false, sx = 0, sy = 0, lx = 0, ly = 0;
-        idoc.addEventListener('mousedown', (e) => {
+        idoc.addEventListener('mousedown', (e) => {{
             if (e.button !== 1) return;
             e.preventDefault();
             panning = true;
             sx = e.clientX; sy = e.clientY;
-            lx = wrapper.scrollLeft; ly = wrapper.scrollTop;
+            lx = wrapper ? wrapper.scrollLeft : 0;
+            ly = wrapper ? wrapper.scrollTop : 0;
             idoc.body.style.cursor = 'grabbing';
-        }, true);
-        idoc.addEventListener('mousemove', (e) => {
-            if (!panning) return;
+        }}, true);
+        idoc.addEventListener('mousemove', (e) => {{
+            if (!panning || !wrapper) return;
             wrapper.scrollLeft = lx - (e.clientX - sx);
             wrapper.scrollTop = ly - (e.clientY - sy);
-        }, true);
-        const stop = () => {
+        }}, true);
+        const stop = () => {{
             if (!panning) return;
             panning = false;
             idoc.body.style.cursor = '';
-        };
+        }};
         idoc.addEventListener('mouseup', stop, true);
         idoc.addEventListener('mouseleave', stop, true);
-        idoc.addEventListener('auxclick', (e) => {
+        idoc.addEventListener('auxclick', (e) => {{
             if (e.button === 1) e.preventDefault();
-        }, true);
-    })();
+        }}, true);
+    }})();
     </script>
     """,
     height=0,
