@@ -134,6 +134,7 @@ async def test_worker_applies_template(Session, seeded, monkeypatch, tmp_path):
         assert fetched.result["template_id"] == tid
         assert fetched.result["template_version"] == 1
         assert fetched.result["fields"]["invoice_no"] == "INV-42"
+        await sess.execute(text("UPDATE jobs SET template_id = NULL WHERE template_id = :t"), {"t": tid})
         await sess.execute(text("DELETE FROM template_fields WHERE template_id = :t"), {"t": tid})
         await sess.execute(text("DELETE FROM template_pages WHERE template_id = :t"), {"t": tid})
         await sess.execute(text("DELETE FROM doc_templates WHERE id = :t"), {"t": tid})
