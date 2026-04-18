@@ -10,6 +10,8 @@ from app.admin.schemas import (
     ClientCreated,
     ClientOut,
     ClientUpdate,
+    PlanOut,
+    PlanUpsert,
 )
 from app.billing.auth import generate_api_key, hash_api_key, key_prefix
 from app.billing.models import Client, Plan
@@ -109,6 +111,59 @@ async def rotate_key(client_id: int, session: AsyncSession = Depends(get_session
     await session.commit()
     await session.refresh(c)
     return {**_client_out(c), "api_key": raw_key}
+
+
+def _plan_out(p: Plan) -> dict:
+    return {
+        "max_transactions": p.max_transactions,
+        "max_pages_per_txn": p.max_pages_per_txn,
+        "reset_period": p.reset_period,
+        "effective_from": p.effective_from,
+        "effective_to": p.effective_to,
+    }
+
+
+@router.get("/clients/{client_id}/plan", response_model=PlanOut)
+async def get_current_plan(client_id: int, session: AsyncSession = Depends(get_session)):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    result = await session.execute(
+        select(Plan).where(Plan.client_id == client_id, Plan.effective_to.is_(None))
+    )
+    plan = result.scalar_one_or_none()
+    if plan is None:
+        raise NotFound(f"no active plan for client {client_id}")
+    return _plan_out(plan)
+
+
+@router.put("/clients/{client_id}/plan", response_model=PlanOut)
+async def upsert_plan(
+    client_id: int,
+    body: PlanUpsert,
+    session: AsyncSession = Depends(get_session),
+):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    now = datetime.now(timezone.utc)
+    result = await session.execute(
+        select(Plan).where(Plan.client_id == client_id, Plan.effective_to.is_(None))
+    )
+    old = result.scalar_one_or_none()
+    if old is not None:
+        old.effective_to = now
+    new = Plan(
+        client_id=client_id,
+        max_transactions=body.max_transactions,
+        max_pages_per_txn=body.max_pages_per_txn,
+        reset_period=body.reset_period,
+        effective_from=now,
+    )
+    session.add(new)
+    await session.commit()
+    await session.refresh(new)
+    return _plan_out(new)
 
 
 @router.delete("/clients/{client_id}", response_model=ClientOut)
