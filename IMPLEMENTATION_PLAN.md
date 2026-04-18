@@ -303,6 +303,57 @@ Ref: §Phase 6. Skippable if time-constrained — can add later.
 
 ---
 
+## Phase 6.5 — Admin Dashboard (Streamlit)  _(Week 4, Days 1–3)_
+
+Ops-facing UI to manage clients, keys, quota, billing without hand-crafting curl calls. No client-facing portal — admin only. Dogfoods `/admin/v1/*` endpoints built in Phase 5.
+
+**Stack:** Streamlit (reuse legacy `ssm_ui.py` patterns) → calls `/admin/v1/*` via `requests` lib. Runs as `ocr-admin-ui.service` on `127.0.0.1:8503`. nginx IP-allowlist + basic-auth in front.
+
+### 6.5.1 Scaffold
+
+- [ ] `app/admin_ui/` new module (keep separate from client API)
+- [ ] `app/admin_ui/main.py` — Streamlit entrypoint
+- [ ] `app/admin_ui/api_client.py` — thin wrapper around `requests`, injects `X-Admin-Token`
+- [ ] Login page: admin token input → validate via `/admin/v1/health` → store in `st.session_state`
+- [ ] Logout clears session
+
+### 6.5.2 Pages
+
+- [ ] **Clients list** — `st.dataframe`: name, email, key_prefix, plan, used/limit, last_seen, active. Filter by active/inactive + search by name/email.
+- [ ] **Client detail** — click row → tabs:
+  - Overview: plan, status, created_at, key_prefix, period_reset
+  - Usage: 30-day line chart (transactions/day), current period counter
+  - Jobs: last 50 jobs w/ status
+  - Audit log: admin actions on this client
+- [ ] **Create client** — form (name, email, plan selector) → POST `/admin/v1/clients` → show raw key ONCE in green box with copy button + warning "save now, not recoverable"
+- [ ] **Actions on client detail page:**
+  - Rekey button (confirm dialog) → shows new raw key once
+  - Change plan (form) → PUT `/admin/v1/clients/{id}/plan`
+  - Reset period (confirm) → POST `/admin/v1/clients/{id}/reset`
+  - Suspend/Reactivate toggle
+- [ ] **Billing report page** — period selector (month picker) → table + CSV download button
+- [ ] **System health page** — `/admin/v1/health` deep probe output
+
+### 6.5.3 systemd + nginx
+
+- [ ] Write `/etc/systemd/system/ocr-admin-ui.service` (runs `streamlit run app/admin_ui/main.py --server.port 8503 --server.address 127.0.0.1`, sandboxed like other units)
+- [ ] `systemctl enable --now ocr-admin-ui`
+- [ ] nginx: add `/admin-ui/` location block → proxy to `127.0.0.1:8503`, same IP allowlist as `/admin/v1/` + basic-auth
+- [ ] `nginx -t && systemctl reload nginx`
+
+### 6.5.4 Verify
+
+- [ ] From allowed IP: login → create test client → copy key → use key against `/api/v1/ocr` → returns 202
+- [ ] Dashboard shows new client w/ 1 txn used
+- [ ] Rekey → old key returns 403, new key works
+- [ ] Suspend → both keys return 403
+- [ ] Change plan to 10/month → submit 11 → 11th returns 429
+- [ ] From disallowed IP: 403 at nginx (never reaches Streamlit)
+
+**Gate:** can onboard + manage a client end-to-end via UI only, no curl.
+
+---
+
 ## Phase 7 — SSL  _(When domain ready — post-launch)_
 
 - [ ] Point DNS A record to VPS IP, wait for propagation
@@ -461,6 +512,7 @@ Build in pure-Python first, unit-test heavily, wire into API last.
 | 4 — Queue + async | 3 days | 5 days |
 | 5 — Admin | 3 days | 5 days |
 | 6 — Monitoring | 2 days | 3 days |
+| 6.5 — Admin Dashboard (Streamlit) | 3 days | 5 days |
 | 9 — Template Editor (MANDATORY) | 14 days | 20 days |
 | **v1 subtotal (incl. Phase 9)** | **~6–7 weeks** | **~8–9 weeks** |
 | 7 — SSL | 0.5 day | 1 day |
