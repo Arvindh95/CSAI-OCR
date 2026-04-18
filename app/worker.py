@@ -25,8 +25,8 @@ def _normalize(s: str | None) -> str:
     if s is None:
         return ""
     s = s.strip().lower()
-    s = re.sub(r"[\s:：\-–—.,;]+", " ", s)
-    return s.strip()
+    s = re.sub(r"[\s:：\-–—.,;]+", "", s)
+    return s
 
 
 def _verify_fields(extracted: dict, expected: dict) -> dict:
