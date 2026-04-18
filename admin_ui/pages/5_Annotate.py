@@ -19,6 +19,7 @@ if not hasattr(_st_image, "image_to_url"):
     _st_image.image_to_url = _image_to_url_shim
 
 from streamlit_drawable_canvas import st_canvas
+import streamlit.components.v1 as components
 
 from admin_ui.api import get_page_lines, get_template, update_template
 
@@ -88,13 +89,23 @@ except Exception as e:
 
 native_w = page["image_width"]
 native_h = page["image_height"]
-MAX_W = 900
-scale = min(1.0, MAX_W / native_w)
-disp_w = int(native_w * scale)
-disp_h = int(native_h * scale)
+scale = 1.0
+disp_w = native_w
+disp_h = native_h
 
-st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
-           f"(coords auto-converted to native {native_w}×{native_h}).")
+st.markdown(
+    """
+    <style>
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) {
+        overflow: auto !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.caption(f"Native {native_w}×{native_h}. Middle-click + drag to pan. "
+           "Scrollbars also available.")
 
 lines_key = f"lines_{tid}_{page['page_index']}"
 c_fetch, c_status = st.columns([1, 3])
@@ -173,16 +184,59 @@ if need_overlay:
 col_canvas, col_form = st.columns([3, 2])
 
 with col_canvas:
-    canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.2)",
-        stroke_width=2,
-        stroke_color="#FF0000",
-        background_image=bg_img,
-        update_streamlit=True,
-        height=disp_h,
-        width=disp_w,
-        drawing_mode="rect",
-        key=f"canvas_{tid}_{page['page_index']}",
+    with st.container(height=720, border=True):
+        canvas_result = st_canvas(
+            fill_color="rgba(255, 165, 0, 0.2)",
+            stroke_width=2,
+            stroke_color="#FF0000",
+            background_image=bg_img,
+            update_streamlit=True,
+            height=disp_h,
+            width=disp_w,
+            drawing_mode="rect",
+            key=f"canvas_{tid}_{page['page_index']}",
+        )
+    components.html(
+        """
+        <script>
+        (function setup() {
+            const pdoc = window.parent.document;
+            const iframe = pdoc.querySelector('iframe[title*="streamlit_drawable_canvas"]');
+            if (!iframe) { setTimeout(setup, 250); return; }
+            const wrapper = iframe.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
+            if (!wrapper) { setTimeout(setup, 250); return; }
+            const idoc = iframe.contentDocument;
+            if (!idoc || !idoc.body) { setTimeout(setup, 250); return; }
+            if (idoc.__csaiPan) return;
+            idoc.__csaiPan = true;
+            let panning = false, sx = 0, sy = 0, lx = 0, ly = 0;
+            idoc.addEventListener('mousedown', (e) => {
+                if (e.button !== 1) return;
+                e.preventDefault();
+                panning = true;
+                sx = e.clientX; sy = e.clientY;
+                lx = wrapper.scrollLeft; ly = wrapper.scrollTop;
+                idoc.body.style.cursor = 'grabbing';
+            }, true);
+            idoc.addEventListener('mousemove', (e) => {
+                if (!panning) return;
+                wrapper.scrollLeft = lx - (e.clientX - sx);
+                wrapper.scrollTop = ly - (e.clientY - sy);
+            }, true);
+            const stop = (e) => {
+                if (!panning) return;
+                panning = false;
+                idoc.body.style.cursor = '';
+            };
+            idoc.addEventListener('mouseup', stop, true);
+            idoc.addEventListener('mouseleave', stop, true);
+            idoc.addEventListener('auxclick', (e) => {
+                if (e.button === 1) e.preventDefault();
+            }, true);
+        })();
+        </script>
+        """,
+        height=0,
     )
 
 with col_form:
