@@ -1,0 +1,10 @@
+[Unit]
+Description=CSAI-OCR stale-job reaper
+
+[Service]
+Type=oneshot
+User=claudeuser
+WorkingDirectory=/opt/ocr-saas
+ExecStart=/opt/ocr-saas/venv/bin/python /opt/ocr-saas/scripts/reap_stale_jobs.py
+StandardOutput=journal
+StandardError=journal

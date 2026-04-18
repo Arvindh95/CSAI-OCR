@@ -1,0 +1,10 @@
+[Unit]
+Description=Run CSAI-OCR disk sweep daily
+
+[Timer]
+OnBootSec=15min
+OnCalendar=daily
+Unit=ocr-disksweep.service
+
+[Install]
+WantedBy=timers.target

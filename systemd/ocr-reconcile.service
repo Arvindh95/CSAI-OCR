@@ -1,0 +1,10 @@
+[Unit]
+Description=CSAI-OCR quota reconcile
+
+[Service]
+Type=oneshot
+User=claudeuser
+WorkingDirectory=/opt/ocr-saas
+ExecStart=/opt/ocr-saas/venv/bin/python /opt/ocr-saas/scripts/reconcile_quota.py
+StandardOutput=journal
+StandardError=journal

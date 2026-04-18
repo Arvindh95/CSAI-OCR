@@ -1,0 +1,10 @@
+[Unit]
+Description=Run CSAI-OCR reconcile every 5 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Unit=ocr-reconcile.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=CSAI-OCR disk sweep
+
+[Service]
+Type=oneshot
+User=claudeuser
+WorkingDirectory=/opt/ocr-saas
+ExecStart=/opt/ocr-saas/venv/bin/python /opt/ocr-saas/scripts/sweep_disk.py
+StandardOutput=journal
+StandardError=journal
