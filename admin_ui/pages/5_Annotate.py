@@ -171,6 +171,9 @@ if need_overlay:
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
+if bg_img.size != (disp_w, disp_h):
+    bg_img = bg_img.resize((disp_w, disp_h), Image.LANCZOS)
+
 col_canvas, col_form = st.columns([3, 2])
 
 with col_canvas:
