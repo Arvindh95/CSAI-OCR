@@ -25,6 +25,12 @@ tid = int(tid)
 
 try:
     tpl = get_template(tid)
+except httpx.HTTPStatusError as e:
+    if e.response.status_code == 404:
+        st.info(f"No template #{tid}. Enter a valid ID above.")
+        st.stop()
+    st.error(_err(e))
+    st.stop()
 except Exception as e:
     st.error(_err(e))
     st.stop()
