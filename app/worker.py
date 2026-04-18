@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
@@ -13,6 +14,7 @@ from app.billing.jobs import mark_done, mark_failed, mark_started
 from app.billing.models import UsageLog
 from app.billing.quota import release
 from app.billing.redis_client import get_redis
+from app.metrics import jobs_total, ocr_duration_seconds
 from app.ocr import extract_lines
 from app.templates.extractor import extract_with_template
 from app.templates.resolver import load_template_dict
@@ -39,12 +41,14 @@ def _run_paddle(path: str) -> list[dict]:
     return extract_lines(ocr_engine(), path)
 
 
-async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: int,
+async def _process(job_id: UUID, endpoint: str, storage_path: str,
+                   client_id: int, period_id: int,
                    template_id: int | None = None):
     db_url = os.environ["DATABASE_URL"]
     engine = create_async_engine(db_url, poolclass=NullPool,
                                   connect_args={"ssl": False})
     Session = async_sessionmaker(engine, expire_on_commit=False)
+    t0 = time.monotonic()
     try:
         async with Session() as s:
             await mark_started(s, job_id)
@@ -99,6 +103,10 @@ async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: i
                     timestamp=datetime.now(timezone.utc),
                 ))
             await s.commit()
+
+        elapsed = time.monotonic() - t0
+        ocr_duration_seconds.labels(status=status).observe(elapsed)
+        jobs_total.labels(status=status, endpoint=endpoint).inc()
     finally:
         await engine.dispose()
         try:
@@ -110,5 +118,5 @@ async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: i
 def run_ocr_job(job_id_str: str, endpoint: str, storage_path: str,
                 client_id: int, period_id: int,
                 template_id: int | None = None):
-    asyncio.run(_process(UUID(job_id_str), storage_path, client_id, period_id,
-                         template_id))
+    asyncio.run(_process(UUID(job_id_str), endpoint, storage_path,
+                         client_id, period_id, template_id))

@@ -13,6 +13,11 @@ from app.billing.periods import current_plan, get_or_create_open_period
 from app.billing.quota import release, reserve
 from app.deps import current_client, get_redis_dep, get_session
 from app.errors import BadRequest, IdempotencyConflict, NotFound, QuotaExceeded
+from app.metrics import (
+    idempotency_conflicts_total,
+    jobs_submitted_total,
+    quota_denies_total,
+)
 from app.queue import enqueue_ocr_job
 from app.templates.resolver import resolve_for_client
 from app.upload import validate_upload
@@ -57,6 +62,7 @@ async def submit_ocr(
             redis, client.id, idempotency_key, body_hash, job_id
         )
         if status == "conflict":
+            idempotency_conflicts_total.inc()
             raise IdempotencyConflict(
                 "idempotency-key reused with different body",
                 detail={"job_id": str(existing_id)},
@@ -70,6 +76,7 @@ async def submit_ocr(
             }
 
     if not await reserve(redis, client.id, period.id, limit=plan.max_transactions):
+        quota_denies_total.inc()
         raise QuotaExceeded(f"plan limit {plan.max_transactions} reached this period")
 
     try:
@@ -95,6 +102,9 @@ async def submit_ocr(
         job_id, "/api/v1/ocr", str(storage_path), client.id, period.id,
         template_id=template.id if template else None,
     )
+    jobs_submitted_total.labels(
+        template=(doc_type or "none"), mime=mime,
+    ).inc()
     return {"job_id": str(job_id), "status": "queued"}
 
 
