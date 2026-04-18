@@ -70,4 +70,4 @@ else:
     ]
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
-st.caption("Actions (rotate key, reset quota, edit plan, deactivate) → next page.")
+st.caption("Actions (rotate key, reset quota, edit plan, deactivate) → **Actions** page.")
