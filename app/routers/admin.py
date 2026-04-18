@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +11,16 @@ from app.admin.schemas import (
     ClientCreated,
     ClientOut,
     ClientUpdate,
+    JobOut,
     PlanOut,
     PlanUpsert,
+    UsageOut,
 )
 from app.billing.auth import generate_api_key, hash_api_key, key_prefix
-from app.billing.models import Client, Plan
-from app.deps import get_session
+from app.billing.models import Client, Job, Plan
+from app.billing.periods import current_plan, get_or_create_open_period
+from app.billing.quota import current as quota_current, reset as quota_reset
+from app.deps import get_redis_dep, get_session
 from app.errors import BadRequest, NotFound
 
 router = APIRouter(prefix="/admin/v1")
@@ -175,3 +180,84 @@ async def deactivate_client(client_id: int, session: AsyncSession = Depends(get_
     await session.commit()
     await session.refresh(c)
     return _client_out(c)
+
+
+@router.get("/clients/{client_id}/usage", response_model=UsageOut)
+async def get_usage(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis_dep),
+):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    plan = await current_plan(session, client_id)
+    if plan is None:
+        raise NotFound(f"no active plan for client {client_id}")
+    period = await get_or_create_open_period(session, client_id)
+    await session.commit()
+    used = await quota_current(redis, client_id, period.id)
+    limit = plan.max_transactions
+    return {
+        "period_id": period.id,
+        "period_start": period.period_start,
+        "period_end": period.period_end,
+        "used": used,
+        "limit": limit,
+        "remaining": max(0, limit - used),
+    }
+
+
+@router.post("/clients/{client_id}/quota/reset", response_model=UsageOut)
+async def reset_quota(
+    client_id: int,
+    session: AsyncSession = Depends(get_session),
+    redis: Redis = Depends(get_redis_dep),
+):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    plan = await current_plan(session, client_id)
+    if plan is None:
+        raise NotFound(f"no active plan for client {client_id}")
+    period = await get_or_create_open_period(session, client_id)
+    await session.commit()
+    await quota_reset(redis, client_id, period.id, 0)
+    return {
+        "period_id": period.id,
+        "period_start": period.period_start,
+        "period_end": period.period_end,
+        "used": 0,
+        "limit": plan.max_transactions,
+        "remaining": plan.max_transactions,
+    }
+
+
+@router.get("/clients/{client_id}/jobs", response_model=list[JobOut])
+async def list_jobs(
+    client_id: int,
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    status: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    stmt = select(Job).where(Job.client_id == client_id).order_by(Job.queued_at.desc())
+    if status:
+        stmt = stmt.where(Job.status == status)
+    stmt = stmt.limit(limit).offset(offset)
+    result = await session.execute(stmt)
+    return [
+        {
+            "job_id": str(j.id),
+            "endpoint": j.endpoint,
+            "status": j.status,
+            "pages_submitted": j.pages_submitted,
+            "queued_at": j.queued_at,
+            "completed_at": j.completed_at,
+            "error_msg": j.error_msg,
+        }
+        for j in result.scalars().all()
+    ]
