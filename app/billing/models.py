@@ -77,6 +77,9 @@ class Job(Base):
     template_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+from app.templates import models as _template_models  # noqa: E402,F401
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
