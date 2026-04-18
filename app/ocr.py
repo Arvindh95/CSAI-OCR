@@ -11,6 +11,18 @@ def get_ocr():
     return PaddleOCR(lang="en", enable_mkldnn=False)
 
 
+def get_ocr_no_unwarp():
+    """OCR engine without UVDoc unwarping — coords match original image."""
+    from paddleocr import PaddleOCR
+    return PaddleOCR(
+        lang="en",
+        enable_mkldnn=False,
+        use_doc_orientation_classify=False,
+        use_doc_unwarping=False,
+        use_textline_orientation=False,
+    )
+
+
 def poly_to_xywh(poly) -> list[int]:
     xs = [float(p[0]) for p in poly]
     ys = [float(p[1]) for p in poly]

@@ -47,4 +47,7 @@ def apply_post_process(value: str | None, rule: str | None):
         return _as_number(value)
     if rule == "date":
         return _as_date(value)
+    if rule.startswith("strip_chars:"):
+        chars = rule[len("strip_chars:"):]
+        return value.strip(chars).strip()
     return value

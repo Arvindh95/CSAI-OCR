@@ -90,7 +90,8 @@ except Exception as e:
 native_w = page["image_width"]
 native_h = page["image_height"]
 MAX_W = 900
-scale = min(1.0, MAX_W / native_w)
+MAX_H = 800
+scale = min(1.0, MAX_W / native_w, MAX_H / native_h)
 disp_w = int(native_w * scale)
 disp_h = int(native_h * scale)
 
@@ -259,7 +260,14 @@ with col_form:
             fname = st.text_input("Field name")
             post = st.selectbox("post_process",
                                  ["(none)", "trim", "uppercase", "lowercase",
-                                  "number", "date"], index=1)
+                                  "number", "date", "strip_chars:"], index=1)
+            if post == "strip_chars:":
+                strip_chars = st.text_input(
+                    "Characters to strip (e.g. `:` or `: `)",
+                    value=":",
+                    key=f"stripchars_{tid}_{len(rects)}",
+                )
+                post = f"strip_chars:{strip_chars}"
             required = st.checkbox("Required", value=False)
             merge = st.checkbox("Merge multi-line in zone", value=True)
             order = st.number_input("display_order", min_value=0, value=1, step=1)

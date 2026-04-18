@@ -49,3 +49,8 @@ htmlcov/
 uploads/
 outputs/
 tmp/
+
+# Sensitive docs & sample images
+OCR App Startup.md
+*.jpeg
+*.jpg

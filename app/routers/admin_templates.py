@@ -366,9 +366,9 @@ async def delete_page(template_id: int, page_index: int,
     return {"deleted": True, "template_id": template_id, "page_index": page_index}
 
 
-def _run_ocr_sync(path: str) -> list[dict]:
-    from app.ocr import extract_lines, get_ocr
-    return extract_lines(get_ocr(), path)
+def _run_ocr_sync(path: str):
+    from app.ocr import extract_lines, get_ocr_no_unwarp
+    return extract_lines(get_ocr_no_unwarp(), path)
 
 
 @router.get("/templates/{template_id}/pages/{page_index}/lines")
@@ -401,6 +401,27 @@ async def test_template(
     suffix = (file.filename or "x").rsplit(".", 1)[-1].lower()
     if suffix not in ("jpg", "jpeg", "png", "pdf"):
         suffix = "png"
+
+    # Resize test image to match template page dimensions so OCR coords
+    # land in the same pixel space as the annotated zone coordinates.
+    pages = await _load_pages(session, template_id)
+    page0 = next((p for p in pages if p.page_index == 0), None)
+    if page0 is not None and suffix != "pdf":
+        import io as _io
+        try:
+            img = Image.open(_io.BytesIO(data))
+            img.load()
+            if img.size != (page0.image_width, page0.image_height):
+                img = img.convert("RGB").resize(
+                    (page0.image_width, page0.image_height), Image.LANCZOS,
+                )
+                buf = _io.BytesIO()
+                img.save(buf, format="PNG", optimize=True)
+                data = buf.getvalue()
+                suffix = "png"
+        except Exception:
+            pass
+
     with tempfile.NamedTemporaryFile(suffix=f".{suffix}", delete=False) as f:
         f.write(data)
         tmp_path = f.name
@@ -413,7 +434,6 @@ async def test_template(
         except Exception:
             pass
 
-    pages = await _load_pages(session, template_id)
     fields = await _load_fields(session, template_id)
     template_dict = {
         "pages": [

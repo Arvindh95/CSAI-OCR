@@ -11,7 +11,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.errors import install_handlers
 from app.logging_mw import AccessLogMiddleware
 from app.metrics import queue_depth
-from app.routers import admin, admin_templates, health, ocr
+from app.routers import admin, admin_templates, health, ocr, verify
 
 _LOG_CFG = os.environ.get("LOG_CONFIG", "/opt/ocr-saas/config/logging.json")
 if os.path.exists(_LOG_CFG):
@@ -50,5 +50,6 @@ async def metrics(request: Request) -> Response:
 
 app.include_router(health.router)
 app.include_router(ocr.router)
+app.include_router(verify.router)
 app.include_router(admin.router)
 app.include_router(admin_templates.router)
