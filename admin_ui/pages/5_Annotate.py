@@ -7,8 +7,16 @@ from PIL import Image
 
 import streamlit.elements.image as _st_image
 if not hasattr(_st_image, "image_to_url"):
-    from streamlit.elements.lib.image_utils import image_to_url as _image_to_url
-    _st_image.image_to_url = _image_to_url
+    from streamlit.elements.lib.image_utils import image_to_url as _new_image_to_url
+    from streamlit.elements.lib.layout_utils import LayoutConfig as _LayoutConfig
+
+    def _image_to_url_shim(image, width, clamp, channels, output_format, image_id):
+        return _new_image_to_url(
+            image, _LayoutConfig(width=width),
+            clamp, channels, output_format, image_id,
+        )
+
+    _st_image.image_to_url = _image_to_url_shim
 
 from streamlit_drawable_canvas import st_canvas
 
