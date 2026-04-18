@@ -1,6 +1,15 @@
-def _center(bbox):
-    x, y, w, h = bbox
-    return x + w / 2, y + h / 2
+def _overlap_ratio(line_bbox, zone):
+    lx, ly, lw, lh = line_bbox
+    zx1, zy1, zx2, zy2 = zone
+    ix1 = max(lx, zx1)
+    iy1 = max(ly, zy1)
+    ix2 = min(lx + lw, zx2)
+    iy2 = min(ly + lh, zy2)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    line_area = max(lw * lh, 1)
+    return inter / line_area
 
 
 def find_in_zone(lines_on_page: list[dict], config: dict,
@@ -10,6 +19,7 @@ def find_in_zone(lines_on_page: list[dict], config: dict,
     w = float(config["w"])
     h = float(config["h"])
     merge = bool(config.get("merge", True))
+    min_overlap = float(config.get("min_overlap", 0.3))
 
     if max(x, y, w, h) <= 1.0 and img_w and img_h:
         x *= img_w
@@ -17,13 +27,12 @@ def find_in_zone(lines_on_page: list[dict], config: dict,
         w *= img_w
         h *= img_h
 
-    x2, y2 = x + w, y + h
+    zone = (x, y, x + w, y + h)
     hits = []
     for ln in lines_on_page:
         if "bbox" not in ln:
             continue
-        cx, cy = _center(ln["bbox"])
-        if x <= cx <= x2 and y <= cy <= y2:
+        if _overlap_ratio(ln["bbox"], zone) >= min_overlap:
             hits.append(ln)
     if not hits:
         return None
