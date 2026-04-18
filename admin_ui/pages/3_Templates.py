@@ -100,9 +100,9 @@ except Exception as e:
     st.error(_err(e))
     st.stop()
 
+scope = "global" if tpl["client_id"] is None else f"client #{tpl['client_id']}"
 st.caption(f"**{tpl['name']}** · `{tpl['doc_type_code']}` · v{tpl['version']} · "
-           f"{'✅ active' if tpl['is_active'] else '⛔ inactive'} · "
-           f"{'global' if tpl['client_id'] is None else f'client #{tpl[\"client_id\"]}'}")
+           f"{'✅ active' if tpl['is_active'] else '⛔ inactive'} · {scope}")
 
 e1, e2 = st.columns(2)
 with e1:
