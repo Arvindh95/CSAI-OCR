@@ -163,14 +163,20 @@ else:
             st.rerun()
 
 st.divider()
+raw_key = f"raw_{tid}"
+hash_key = f"raw_hash_{tid}"
+current_hash = hash(json.dumps(draft, sort_keys=True))
+if st.session_state.get(hash_key) != current_hash:
+    st.session_state[raw_key] = json.dumps(draft, indent=2)
+    st.session_state[hash_key] = current_hash
 edited_raw = st.text_area("Edit raw JSON (optional)",
-                           value=json.dumps(draft, indent=2), height=260,
-                           key=f"raw_{tid}")
+                           height=260, key=raw_key)
 c_apply, c_save = st.columns(2)
 if c_apply.button("Apply JSON to draft"):
     try:
         parsed = json.loads(edited_raw)
         st.session_state[draft_key] = parsed
+        st.session_state[hash_key] = hash(json.dumps(parsed, sort_keys=True))
         st.success("Draft updated.")
         st.rerun()
     except Exception as e:
