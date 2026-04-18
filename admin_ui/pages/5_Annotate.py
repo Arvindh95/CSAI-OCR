@@ -88,46 +88,13 @@ except Exception as e:
 
 native_w = page["image_width"]
 native_h = page["image_height"]
-
-zoom_key = f"zoom_{tid}_{page['page_index']}"
-zoom = st.slider(
-    "Zoom %",
-    min_value=50, max_value=200,
-    value=st.session_state.get(zoom_key, 100),
-    step=10, key=zoom_key,
-    help="100% = native resolution. Scroll canvas with mouse wheel / "
-         "scrollbars to pan across large pages.",
-)
-scale = zoom / 100.0
+MAX_W = 900
+scale = min(1.0, MAX_W / native_w)
 disp_w = int(native_w * scale)
 disp_h = int(native_h * scale)
 
-st.markdown(
-    """
-    <style>
-    section.main div.block-container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) {
-        overflow: auto !important;
-    }
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) > div {
-        overflow: visible !important;
-        width: max-content !important;
-        min-width: 100%;
-    }
-    iframe[title*="streamlit_drawable_canvas"] { max-width: none !important; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-viewport_h = st.slider("Viewport height (px)", 400, 1400,
-                        value=st.session_state.get(f"vh_{tid}", 720), step=40,
-                        key=f"vh_{tid}",
-                        help="Scrollable window height. Canvas scrolls inside it.")
-
-st.caption(f"Draw rectangles over zones. Zoom {zoom}% · "
-           f"canvas {disp_w}×{disp_h} · native {native_w}×{native_h}. "
-           f"Scroll inside {viewport_h}px viewport to pan.")
+st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
+           f"(coords auto-converted to native {native_w}×{native_h}).")
 
 lines_key = f"lines_{tid}_{page['page_index']}"
 c_fetch, c_status = st.columns([1, 3])
@@ -166,13 +133,13 @@ show_lines = c_ov2.checkbox("Show OCR line boxes",
                              help="Green boxes show exact OCR line bounds. "
                                   "Draw zones tight around them for best match. "
                                   "Load OCR lines first.")
-bg_img = pil_img.resize((disp_w, disp_h), Image.LANCZOS).convert("RGB")
+bg_img = pil_img
 need_overlay = show_existing or (show_lines and cached_lines)
 if need_overlay:
-    overlay = bg_img.copy()
+    overlay = pil_img.copy()
     draw = ImageDraw.Draw(overlay, "RGBA")
     try:
-        font = ImageFont.truetype("arial.ttf", 13)
+        font = ImageFont.truetype("arial.ttf", 14)
     except Exception:
         font = ImageFont.load_default()
     if show_lines and cached_lines:
@@ -180,8 +147,7 @@ if need_overlay:
             if "bbox" not in ln:
                 continue
             bx, by, bw, bh = ln["bbox"]
-            draw.rectangle([bx * scale, by * scale,
-                            (bx + bw) * scale, (by + bh) * scale],
+            draw.rectangle([bx, by, bx + bw, by + bh],
                             outline=(0, 200, 80, 220), width=1,
                             fill=(0, 200, 80, 25))
     if show_existing:
@@ -197,15 +163,16 @@ if need_overlay:
             if max(zx, zy, zw, zh) <= 1.0:
                 zx *= native_w; zy *= native_h
                 zw *= native_w; zh *= native_h
-            draw.rectangle([zx * scale, zy * scale,
-                            (zx + zw) * scale, (zy + zh) * scale],
+            draw.rectangle([zx, zy, zx + zw, zy + zh],
                             outline=(0, 180, 255, 255), width=2,
                             fill=(0, 180, 255, 40))
-            draw.text((zx * scale + 2, max(0, zy * scale - 15)), f["name"],
+            draw.text((zx + 2, max(0, zy - 16)), f["name"],
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
-with st.container(height=viewport_h, border=True):
+col_canvas, col_form = st.columns([3, 2])
+
+with col_canvas:
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.2)",
         stroke_width=2,
@@ -218,9 +185,8 @@ with st.container(height=viewport_h, border=True):
         key=f"canvas_{tid}_{page['page_index']}",
     )
 
-st.divider()
-st.subheader("Convert last rect → field")
-with st.container():
+with col_form:
+    st.subheader("Convert last rect → field")
     rects = []
     if canvas_result.json_data and canvas_result.json_data.get("objects"):
         rects = [o for o in canvas_result.json_data["objects"]
