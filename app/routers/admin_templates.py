@@ -202,10 +202,18 @@ async def update_template(
     await session.flush()
 
     old_pages = await _load_pages(session, old.id)
+    new_dir = _template_dir(new.id)
     for p in old_pages:
+        src = Path(p.image_path)
+        if src.exists():
+            dest = new_dir / src.name
+            dest.write_bytes(src.read_bytes())
+            new_image_path = str(dest)
+        else:
+            new_image_path = p.image_path
         session.add(TemplatePage(
             template_id=new.id, page_index=p.page_index,
-            image_path=p.image_path, image_width=p.image_width,
+            image_path=new_image_path, image_width=p.image_width,
             image_height=p.image_height,
         ))
 
@@ -255,17 +263,25 @@ async def delete_template(
         await session.execute(
             sa_delete(TemplateField).where(TemplateField.template_id == t.id)
         )
+        own_dir = _template_dir(t.id).resolve()
         pages = (await session.execute(
             select(TemplatePage).where(TemplatePage.template_id == t.id)
         )).scalars().all()
         for p in pages:
             try:
-                Path(p.image_path).unlink(missing_ok=True)
+                path = Path(p.image_path).resolve()
+                if own_dir in path.parents:
+                    path.unlink(missing_ok=True)
             except Exception:
                 pass
         await session.execute(
             sa_delete(TemplatePage).where(TemplatePage.template_id == t.id)
         )
+        try:
+            if own_dir.exists() and not any(own_dir.iterdir()):
+                own_dir.rmdir()
+        except Exception:
+            pass
         await session.delete(t)
         await session.commit()
         return snapshot
