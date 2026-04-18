@@ -47,6 +47,11 @@ class BadRequest(APIError):
     code = "bad_request"
 
 
+class Forbidden(APIError):
+    status_code = 403
+    code = "forbidden"
+
+
 def _payload(code: str, message: str, request_id: str | None, detail: dict | None = None) -> dict:
     body = {"error": {"code": code, "message": message}}
     if request_id:

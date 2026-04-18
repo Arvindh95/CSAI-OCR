@@ -18,6 +18,8 @@ async def create_job(
     input_meta: dict | None = None,
     ip_address: str | None = None,
     job_id: UUID | None = None,
+    template_id: int | None = None,
+    template_version: int | None = None,
 ) -> Job:
     job = Job(
         id=job_id or uuid4(),
@@ -32,6 +34,8 @@ async def create_job(
         input_meta=input_meta,
         queued_at=datetime.now(timezone.utc),
         ip_address=ip_address,
+        template_id=template_id,
+        template_version=template_version,
     )
     session.add(job)
     await session.flush()

@@ -19,6 +19,7 @@ def enqueue_ocr_job(
     storage_path: str,
     client_id: int,
     period_id: int,
+    template_id: int | None = None,
     redis: Redis | None = None,
 ) -> None:
     q = get_queue(redis)
@@ -29,6 +30,7 @@ def enqueue_ocr_job(
         storage_path,
         client_id,
         period_id,
+        template_id,
         job_id=str(job_id),
         result_ttl=3600,
         failure_ttl=86400,

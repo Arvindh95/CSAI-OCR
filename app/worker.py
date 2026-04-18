@@ -13,6 +13,9 @@ from app.billing.jobs import mark_done, mark_failed, mark_started
 from app.billing.models import UsageLog
 from app.billing.quota import release
 from app.billing.redis_client import get_redis
+from app.ocr import extract_lines
+from app.templates.extractor import extract_with_template
+from app.templates.resolver import load_template_dict
 
 load_dotenv("/opt/ocr-saas/.env")
 logger = logging.getLogger("csai.worker")
@@ -29,30 +32,43 @@ def ocr_engine():
     return _engine
 
 
-def _run_paddle(path: str) -> dict:
-    ocr = ocr_engine()
-    result = ocr.predict(path)
-    texts = []
-    for page in result:
-        if hasattr(page, "json"):
-            data = page.json
-            for t in data.get("rec_texts", []):
-                texts.append(t)
-    return {"text_lines": texts, "joined": "\n".join(texts)}
+def _run_paddle(path: str) -> list[dict]:
+    return extract_lines(ocr_engine(), path)
 
 
-async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: int):
+async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: int,
+                   template_id: int | None = None):
     db_url = os.environ["DATABASE_URL"]
-    engine = create_async_engine(db_url, poolclass=NullPool)
+    engine = create_async_engine(db_url, poolclass=NullPool,
+                                  connect_args={"ssl": False})
     Session = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with Session() as s:
             await mark_started(s, job_id)
             await s.commit()
+
+        template_dict = None
+        if template_id is not None:
+            async with Session() as s:
+                template_dict = await load_template_dict(s, template_id)
+
         try:
-            result = await asyncio.get_event_loop().run_in_executor(
+            lines = await asyncio.get_event_loop().run_in_executor(
                 None, _run_paddle, storage_path
             )
+            if template_dict is not None:
+                fields = extract_with_template(lines, template_dict)
+                result = {
+                    "lines": lines,
+                    "fields": fields,
+                    "template_id": template_dict["template_id"],
+                    "template_version": template_dict["version"],
+                }
+            else:
+                result = {
+                    "lines": lines,
+                    "joined": "\n".join(ln["text"] for ln in lines),
+                }
             status = "done"
             err = None
         except Exception as e:
@@ -60,6 +76,7 @@ async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: i
             status = "failed"
             err = str(e)[:500]
             result = None
+
         async with Session() as s:
             if status == "done":
                 await mark_done(s, job_id, result)
@@ -88,5 +105,7 @@ async def _process(job_id: UUID, storage_path: str, client_id: int, period_id: i
 
 
 def run_ocr_job(job_id_str: str, endpoint: str, storage_path: str,
-                client_id: int, period_id: int):
-    asyncio.run(_process(UUID(job_id_str), storage_path, client_id, period_id))
+                client_id: int, period_id: int,
+                template_id: int | None = None):
+    asyncio.run(_process(UUID(job_id_str), storage_path, client_id, period_id,
+                         template_id))

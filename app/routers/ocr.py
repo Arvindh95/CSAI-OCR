@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Header, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Request, UploadFile
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from app.billing.quota import release, reserve
 from app.deps import current_client, get_redis_dep, get_session
 from app.errors import BadRequest, IdempotencyConflict, NotFound, QuotaExceeded
 from app.queue import enqueue_ocr_job
+from app.templates.resolver import resolve_for_client
 from app.upload import validate_upload
 
 STORAGE_DIR = Path(os.environ.get("OCR_STORAGE_DIR", "/opt/ocr-saas/storage"))
@@ -31,6 +32,7 @@ _MIME_EXT = {
 async def submit_ocr(
     request: Request,
     file: UploadFile = File(...),
+    doc_type: str | None = Form(default=None),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     client: Client = Depends(current_client),
     session: AsyncSession = Depends(get_session),
@@ -41,6 +43,11 @@ async def submit_ocr(
     if plan is None:
         raise BadRequest("no active plan for client")
     mime, pages, body_hash = validate_upload(data, max_pages=plan.max_pages_per_txn)
+
+    template = None
+    if doc_type:
+        template = await resolve_for_client(session, client.id, doc_type)
+
     period = await get_or_create_open_period(session, client.id)
     await session.commit()
 
@@ -69,9 +76,12 @@ async def submit_ocr(
         await create_job(
             session, client.id, period.id, endpoint="/api/v1/ocr",
             pages=pages, idempotency_key=idempotency_key, body_hash=body_hash,
-            input_meta={"mime": mime, "filename": file.filename},
+            input_meta={"mime": mime, "filename": file.filename,
+                        "doc_type": doc_type},
             ip_address=request.client.host if request.client else None,
             job_id=job_id,
+            template_id=template.id if template else None,
+            template_version=template.version if template else None,
         )
         storage_path = STORAGE_DIR / f"{job_id}{_MIME_EXT[mime]}"
         storage_path.write_bytes(data)
@@ -81,7 +91,10 @@ async def submit_ocr(
         await release(redis, client.id, period.id)
         raise
 
-    enqueue_ocr_job(job_id, "/api/v1/ocr", str(storage_path), client.id, period.id)
+    enqueue_ocr_job(
+        job_id, "/api/v1/ocr", str(storage_path), client.id, period.id,
+        template_id=template.id if template else None,
+    )
     return {"job_id": str(job_id), "status": "queued"}
 
 
