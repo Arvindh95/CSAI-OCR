@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from app.errors import install_handlers
 from app.logging_mw import AccessLogMiddleware
-from app.routers import health, ocr
+from app.routers import admin, health, ocr
 
 _LOG_CFG = os.environ.get("LOG_CONFIG", "/opt/ocr-saas/config/logging.json")
 if os.path.exists(_LOG_CFG):
@@ -29,3 +29,4 @@ install_handlers(app)
 
 app.include_router(health.router)
 app.include_router(ocr.router)
+app.include_router(admin.router)
