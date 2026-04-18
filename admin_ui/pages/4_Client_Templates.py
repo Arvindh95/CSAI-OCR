@@ -26,6 +26,12 @@ cid = int(cid)
 
 try:
     client = get_client(cid)
+except httpx.HTTPStatusError as e:
+    if e.response.status_code == 404:
+        st.info(f"No client #{cid}. Enter a valid ID above.")
+        st.stop()
+    st.error(_err(e))
+    st.stop()
 except Exception as e:
     st.error(_err(e))
     st.stop()
