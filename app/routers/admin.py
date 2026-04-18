@@ -9,6 +9,7 @@ from app.admin.schemas import (
     ClientCreate,
     ClientCreated,
     ClientOut,
+    ClientUpdate,
 )
 from app.billing.auth import generate_api_key, hash_api_key, key_prefix
 from app.billing.models import Client, Plan
@@ -70,4 +71,52 @@ async def get_client(client_id: int, session: AsyncSession = Depends(get_session
     c = await session.get(Client, client_id)
     if c is None:
         raise NotFound(f"client {client_id} not found")
+    return _client_out(c)
+
+
+@router.patch("/clients/{client_id}", response_model=ClientOut)
+async def update_client(
+    client_id: int,
+    body: ClientUpdate,
+    session: AsyncSession = Depends(get_session),
+):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    if body.name is not None:
+        c.name = body.name
+    if body.email is not None:
+        c.email = body.email
+    if body.is_active is not None:
+        c.is_active = body.is_active
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise BadRequest(f"email already in use: {body.email}")
+    await session.refresh(c)
+    return _client_out(c)
+
+
+@router.post("/clients/{client_id}/rotate-key", response_model=ClientCreated)
+async def rotate_key(client_id: int, session: AsyncSession = Depends(get_session)):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    raw_key = generate_api_key()
+    c.api_key_hash = hash_api_key(raw_key)
+    c.api_key_prefix = key_prefix(raw_key)
+    await session.commit()
+    await session.refresh(c)
+    return {**_client_out(c), "api_key": raw_key}
+
+
+@router.delete("/clients/{client_id}", response_model=ClientOut)
+async def deactivate_client(client_id: int, session: AsyncSession = Depends(get_session)):
+    c = await session.get(Client, client_id)
+    if c is None:
+        raise NotFound(f"client {client_id} not found")
+    c.is_active = False
+    await session.commit()
+    await session.refresh(c)
     return _client_out(c)
