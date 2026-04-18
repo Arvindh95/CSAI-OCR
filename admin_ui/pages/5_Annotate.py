@@ -19,7 +19,6 @@ if not hasattr(_st_image, "image_to_url"):
     _st_image.image_to_url = _image_to_url_shim
 
 from streamlit_drawable_canvas import st_canvas
-import streamlit.components.v1 as components
 
 from admin_ui.api import get_page_lines, get_template, update_template
 
@@ -89,13 +88,13 @@ except Exception as e:
 
 native_w = page["image_width"]
 native_h = page["image_height"]
-scale = 1.0
-disp_w = native_w
-disp_h = native_h
+MAX_W = 900
+scale = min(1.0, MAX_W / native_w)
+disp_w = int(native_w * scale)
+disp_h = int(native_h * scale)
 
-
-st.caption(f"Native {native_w}×{native_h}. Middle-click + drag to pan. "
-           "Scrollbars also available.")
+st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
+           f"(coords auto-converted to native {native_w}×{native_h}).")
 
 lines_key = f"lines_{tid}_{page['page_index']}"
 c_fetch, c_status = st.columns([1, 3])
@@ -171,7 +170,9 @@ if need_overlay:
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
-with st.container(height=720, border=True):
+col_canvas, col_form = st.columns([3, 2])
+
+with col_canvas:
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.2)",
         stroke_width=2,
@@ -183,73 +184,9 @@ with st.container(height=720, border=True):
         drawing_mode="rect",
         key=f"canvas_{tid}_{page['page_index']}",
     )
-components.html(
-    f"""
-    <script>
-    (function setup() {{
-        const DISP_W = {disp_w};
-        const pdoc = window.parent.document;
-        const iframes = Array.from(pdoc.querySelectorAll('iframe'));
-        const iframe = iframes.find(f => (f.title || '').toLowerCase().includes('canvas'));
-        if (!iframe) {{ setTimeout(setup, 250); return; }}
 
-        iframe.style.setProperty('width', DISP_W + 'px', 'important');
-        iframe.style.setProperty('min-width', DISP_W + 'px', 'important');
-        iframe.style.setProperty('max-width', 'none', 'important');
-
-        const wrapper = iframe.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
-        if (wrapper) {{
-            wrapper.style.setProperty('overflow', 'auto', 'important');
-        }}
-        let p = iframe.parentElement;
-        let depth = 0;
-        while (p && p !== wrapper && depth < 8) {{
-            p.style.setProperty('width', 'max-content', 'important');
-            p.style.setProperty('min-width', '100%', 'important');
-            p.style.setProperty('max-width', 'none', 'important');
-            p.style.setProperty('overflow', 'visible', 'important');
-            p = p.parentElement;
-            depth++;
-        }}
-
-        const idoc = iframe.contentDocument;
-        if (!idoc || !idoc.body) {{ setTimeout(setup, 250); return; }}
-        if (idoc.__csaiPan) return;
-        idoc.__csaiPan = true;
-        let panning = false, sx = 0, sy = 0, lx = 0, ly = 0;
-        idoc.addEventListener('mousedown', (e) => {{
-            if (e.button !== 1) return;
-            e.preventDefault();
-            panning = true;
-            sx = e.clientX; sy = e.clientY;
-            lx = wrapper ? wrapper.scrollLeft : 0;
-            ly = wrapper ? wrapper.scrollTop : 0;
-            idoc.body.style.cursor = 'grabbing';
-        }}, true);
-        idoc.addEventListener('mousemove', (e) => {{
-            if (!panning || !wrapper) return;
-            wrapper.scrollLeft = lx - (e.clientX - sx);
-            wrapper.scrollTop = ly - (e.clientY - sy);
-        }}, true);
-        const stop = () => {{
-            if (!panning) return;
-            panning = false;
-            idoc.body.style.cursor = '';
-        }};
-        idoc.addEventListener('mouseup', stop, true);
-        idoc.addEventListener('mouseleave', stop, true);
-        idoc.addEventListener('auxclick', (e) => {{
-            if (e.button === 1) e.preventDefault();
-        }}, true);
-    }})();
-    </script>
-    """,
-    height=0,
-)
-
-st.divider()
-st.subheader("Convert last rect → field")
-with st.container():
+with col_form:
+    st.subheader("Convert last rect → field")
     rects = []
     if canvas_result.json_data and canvas_result.json_data.get("objects"):
         rects = [o for o in canvas_result.json_data["objects"]
