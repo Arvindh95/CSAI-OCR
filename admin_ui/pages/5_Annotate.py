@@ -175,10 +175,19 @@ if c_apply.button("Apply JSON to draft"):
         st.rerun()
     except Exception as e:
         st.error(f"Invalid JSON: {e}")
-if c_save.button("Save as NEW version", type="primary"):
+save_mode = st.radio(
+    "Save mode", ["In-place (overwrite)", "New version"],
+    horizontal=True, index=0, key=f"savemode_{tid}",
+)
+if c_save.button("Save", type="primary"):
+    in_place = save_mode.startswith("In-place")
     try:
-        new = update_template(tid, None, st.session_state[draft_key])
-        st.success(f"Saved template #{new['id']} v{new['version']}")
+        new = update_template(tid, None, st.session_state[draft_key],
+                               in_place=in_place)
+        if in_place:
+            st.success(f"Saved in place · template #{new['id']} v{new['version']}")
+        else:
+            st.success(f"Saved as new version · template #{new['id']} v{new['version']}")
         st.session_state["selected_template_id"] = new["id"]
         st.session_state.pop(draft_key, None)
         st.rerun()

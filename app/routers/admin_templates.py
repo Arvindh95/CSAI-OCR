@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from PIL import Image
-from sqlalchemy import select
+from sqlalchemy import delete as sa_delete, select, update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ from app.admin.templates_schemas import (
     TemplateUpdate,
     TestResult,
 )
-from app.billing.models import Client
+from app.billing.models import Client, Job
 from app.deps import get_session
 from app.errors import BadRequest, NotFound
 from app.templates.extractor import extract_with_template
@@ -157,6 +157,7 @@ async def get_template(template_id: int, session: AsyncSession = Depends(get_ses
 async def update_template(
     template_id: int,
     body: TemplateUpdate,
+    in_place: bool = False,
     session: AsyncSession = Depends(get_session),
 ):
     old = await session.get(DocTemplate, template_id)
@@ -166,6 +167,24 @@ async def update_template(
         raise BadRequest("cannot update inactive template; create new instead")
 
     now = datetime.now(timezone.utc)
+
+    if in_place:
+        if body.name is not None:
+            old.name = body.name
+        old.updated_at = now
+        if body.fields is not None:
+            await session.execute(
+                sa_delete(TemplateField).where(TemplateField.template_id == old.id)
+            )
+            for f in body.fields:
+                session.add(TemplateField(
+                    template_id=old.id, field_name=f.name, page_index=f.page_index,
+                    strategy=f.strategy, config=f.config, post_process=f.post_process,
+                    required=f.required, display_order=f.display_order,
+                ))
+        await session.commit()
+        return await _template_detail(session, old)
+
     old.is_active = False
     old.updated_at = now
     await session.flush()
@@ -213,10 +232,43 @@ async def update_template(
 
 
 @router.delete("/templates/{template_id}", response_model=TemplateListItem)
-async def delete_template(template_id: int, session: AsyncSession = Depends(get_session)):
+async def delete_template(
+    template_id: int,
+    hard: bool = False,
+    session: AsyncSession = Depends(get_session),
+):
     t = await session.get(DocTemplate, template_id)
     if t is None:
         raise NotFound(f"template {template_id} not found")
+    snapshot = {
+        "id": t.id, "client_id": t.client_id, "name": t.name,
+        "doc_type_code": t.doc_type_code, "version": t.version,
+        "is_active": False, "created_at": t.created_at,
+    }
+    if hard:
+        await session.execute(
+            sa_update(Job).where(Job.template_id == t.id).values(template_id=None)
+        )
+        await session.execute(
+            sa_delete(ClientTemplate).where(ClientTemplate.template_id == t.id)
+        )
+        await session.execute(
+            sa_delete(TemplateField).where(TemplateField.template_id == t.id)
+        )
+        pages = (await session.execute(
+            select(TemplatePage).where(TemplatePage.template_id == t.id)
+        )).scalars().all()
+        for p in pages:
+            try:
+                Path(p.image_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+        await session.execute(
+            sa_delete(TemplatePage).where(TemplatePage.template_id == t.id)
+        )
+        await session.delete(t)
+        await session.commit()
+        return snapshot
     t.is_active = False
     t.updated_at = datetime.now(timezone.utc)
     await session.commit()

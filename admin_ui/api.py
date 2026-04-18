@@ -136,21 +136,24 @@ def create_template(name: str, doc_type_code: str,
 
 
 def update_template(template_id: int, name: str | None,
-                    fields: list[dict] | None) -> dict:
+                    fields: list[dict] | None,
+                    in_place: bool = False) -> dict:
     body: dict = {}
     if name is not None:
         body["name"] = name
     if fields is not None:
         body["fields"] = fields
     with _c() as c:
-        r = c.put(f"/admin/v1/templates/{template_id}", json=body)
+        r = c.put(f"/admin/v1/templates/{template_id}",
+                  json=body, params={"in_place": in_place})
         r.raise_for_status()
         return r.json()
 
 
-def delete_template(template_id: int) -> dict:
+def delete_template(template_id: int, hard: bool = False) -> dict:
     with _c() as c:
-        r = c.delete(f"/admin/v1/templates/{template_id}")
+        r = c.delete(f"/admin/v1/templates/{template_id}",
+                     params={"hard": hard})
         r.raise_for_status()
         return r.json()
 

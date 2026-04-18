@@ -138,7 +138,7 @@ with e1:
                     st.error(_err(e))
 
 with e2:
-    st.subheader("Fields (edit → saves NEW version)")
+    st.subheader("Fields")
     fields_payload = [
         {"name": f["name"], "page_index": f["page_index"],
          "strategy": f["strategy"], "config": f["config"],
@@ -151,25 +151,37 @@ with e2:
                            height=350, key=f"ed-{tpl['id']}")
     e_name = st.text_input("New name (blank = keep)", value=tpl["name"],
                              key=f"nm-{tpl['id']}")
+    save_mode = st.radio(
+        "Save mode", ["In-place (overwrite)", "New version"],
+        horizontal=True, index=0, key=f"sm-{tpl['id']}",
+    )
     c_save, c_del = st.columns(2)
-    if c_save.button("Save (new version)", type="primary"):
+    if c_save.button("Save", type="primary"):
         try:
             parsed = json.loads(edited) if edited.strip() else []
         except Exception as e:
             st.error(f"Invalid JSON: {e}")
         else:
+            in_place = save_mode.startswith("In-place")
             try:
-                new = update_template(tpl["id"], e_name or None, parsed)
-                st.success(f"Saved v{new['version']} as template #{new['id']}")
+                new = update_template(tpl["id"], e_name or None, parsed,
+                                       in_place=in_place)
+                label = "in place" if in_place else "new version"
+                st.success(f"Saved {label} · template #{new['id']} v{new['version']}")
                 st.session_state["selected_template_id"] = new["id"]
                 st.rerun()
             except Exception as e:
                 st.error(_err(e))
-    confirm = c_del.checkbox("Confirm delete (soft)", key=f"cd-{tpl['id']}")
+    del_mode = c_del.radio(
+        "Delete mode", ["Soft (deactivate)", "Hard (permanent)"],
+        horizontal=False, key=f"dm-{tpl['id']}",
+    )
+    confirm = c_del.checkbox("Confirm delete", key=f"cd-{tpl['id']}")
     if c_del.button("Delete", disabled=not confirm):
+        hard = del_mode.startswith("Hard")
         try:
-            delete_template(tpl["id"])
-            st.success("Deleted.")
+            delete_template(tpl["id"], hard=hard)
+            st.success("Permanently deleted." if hard else "Soft-deleted.")
             st.session_state.pop("selected_template_id", None)
             st.rerun()
         except Exception as e:
