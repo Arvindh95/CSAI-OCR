@@ -90,18 +90,37 @@ native_w = page["image_width"]
 native_h = page["image_height"]
 
 zoom_key = f"zoom_{tid}_{page['page_index']}"
-default_zoom = min(1200, native_w)
-disp_w = st.slider(
-    "Canvas width (px) — use browser scroll for overflow",
-    min_value=500, max_value=min(2000, native_w),
-    value=st.session_state.get(zoom_key, default_zoom),
-    step=50, key=zoom_key,
+zoom = st.slider(
+    "Zoom %",
+    min_value=50, max_value=200,
+    value=st.session_state.get(zoom_key, 100),
+    step=10, key=zoom_key,
+    help="100% = native resolution. Scroll canvas with mouse wheel / "
+         "scrollbars to pan across large pages.",
 )
-scale = disp_w / native_w
+scale = zoom / 100.0
+disp_w = int(native_w * scale)
 disp_h = int(native_h * scale)
 
-st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
-           f"(coords auto-converted to native {native_w}×{native_h}).")
+st.markdown(
+    """
+    <style>
+    section.main div.block-container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
+    div[data-testid="element-container"]:has(> iframe[title*="streamlit_drawable_canvas"]) {
+        overflow: auto !important;
+        max-height: 80vh;
+        max-width: 100%;
+        border: 1px solid rgba(128,128,128,0.2);
+        border-radius: 4px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.caption(f"Draw rectangles over zones. Zoom {zoom}% · "
+           f"canvas {disp_w}×{disp_h} · native {native_w}×{native_h}. "
+           "Scroll to pan if canvas exceeds viewport.")
 
 lines_key = f"lines_{tid}_{page['page_index']}"
 c_fetch, c_status = st.columns([1, 3])
