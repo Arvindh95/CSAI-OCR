@@ -40,6 +40,7 @@ async def create_client(body: ClientCreate, session: AsyncSession = Depends(get_
     try:
         await session.flush()
     except IntegrityError:
+        await session.rollback()
         raise BadRequest(f"email already in use: {body.email}")
     session.add(Plan(
         client_id=client.id,

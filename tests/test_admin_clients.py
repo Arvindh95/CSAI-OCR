@@ -10,6 +10,13 @@ from sqlalchemy.pool import NullPool
 from app.main import app
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def dispose_app_engine():
+    yield
+    from app.billing import db
+    await db.engine.dispose()
+
+
 @pytest_asyncio.fixture
 async def cleanup_emails():
     yield
