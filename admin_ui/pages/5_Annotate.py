@@ -97,7 +97,16 @@ st.markdown(
     f"""
     <style>
     div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) {{
-        overflow: auto !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+    }}
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) div[data-testid="stVerticalBlock"] {{
+        width: max-content !important;
+        min-width: 100% !important;
+    }}
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) div[data-testid="stElementContainer"] {{
+        width: {disp_w}px !important;
+        max-width: none !important;
     }}
     div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) iframe {{
         width: {disp_w}px !important;
