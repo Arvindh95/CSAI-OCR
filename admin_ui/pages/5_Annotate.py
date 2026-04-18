@@ -106,6 +106,15 @@ st.markdown(
     """
     <style>
     section.main div.block-container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) {
+        overflow: auto !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) > div {
+        overflow: visible !important;
+        width: max-content !important;
+        min-width: 100%;
+    }
+    iframe[title*="streamlit_drawable_canvas"] { max-width: none !important; }
     </style>
     """,
     unsafe_allow_html=True,
