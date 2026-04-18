@@ -1,4 +1,5 @@
 import hashlib
+import os
 import secrets
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -6,14 +7,23 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
-from app.billing.db import engine, SessionLocal
 from app.billing.jobs import create_job, get_job, mark_done, mark_failed, mark_started
 from app.billing.models import Client, Period, Plan
 
 
 @pytest_asyncio.fixture
-async def seeded_clients():
+async def SessionLocal():
+    engine = create_async_engine(os.environ["DATABASE_URL"], poolclass=NullPool)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield factory
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def seeded_clients(SessionLocal):
     async with SessionLocal() as session:
         now = datetime.now(timezone.utc)
         c1 = Client(
@@ -39,19 +49,20 @@ async def seeded_clients():
         await session.commit()
         c1_id, c2_id, p1_id, p2_id = c1.id, c2.id, period1.id, period2.id
     yield c1_id, c2_id, p1_id, p2_id
-    async with engine.begin() as conn:
-        await conn.execute(text("DELETE FROM jobs WHERE client_id IN (:a, :b)"),
-                           {"a": c1_id, "b": c2_id})
-        await conn.execute(text("DELETE FROM periods WHERE client_id IN (:a, :b)"),
-                           {"a": c1_id, "b": c2_id})
-        await conn.execute(text("DELETE FROM plans WHERE client_id IN (:a, :b)"),
-                           {"a": c1_id, "b": c2_id})
-        await conn.execute(text("DELETE FROM clients WHERE id IN (:a, :b)"),
-                           {"a": c1_id, "b": c2_id})
+    async with SessionLocal() as session:
+        await session.execute(text("DELETE FROM jobs WHERE client_id IN (:a, :b)"),
+                              {"a": c1_id, "b": c2_id})
+        await session.execute(text("DELETE FROM periods WHERE client_id IN (:a, :b)"),
+                              {"a": c1_id, "b": c2_id})
+        await session.execute(text("DELETE FROM plans WHERE client_id IN (:a, :b)"),
+                              {"a": c1_id, "b": c2_id})
+        await session.execute(text("DELETE FROM clients WHERE id IN (:a, :b)"),
+                              {"a": c1_id, "b": c2_id})
+        await session.commit()
 
 
 @pytest.mark.asyncio
-async def test_create_and_get_job(seeded_clients):
+async def test_create_and_get_job(SessionLocal, seeded_clients):
     c1_id, _, p1_id, _ = seeded_clients
     async with SessionLocal() as session:
         job = await create_job(session, c1_id, p1_id, endpoint="/ocr", pages=2,
@@ -67,7 +78,7 @@ async def test_create_and_get_job(seeded_clients):
 
 
 @pytest.mark.asyncio
-async def test_cross_client_isolation(seeded_clients):
+async def test_cross_client_isolation(SessionLocal, seeded_clients):
     c1_id, c2_id, p1_id, _ = seeded_clients
     async with SessionLocal() as session:
         job = await create_job(session, c1_id, p1_id, endpoint="/ocr")
@@ -79,14 +90,14 @@ async def test_cross_client_isolation(seeded_clients):
 
 
 @pytest.mark.asyncio
-async def test_get_nonexistent_job(seeded_clients):
+async def test_get_nonexistent_job(SessionLocal, seeded_clients):
     c1_id, _, _, _ = seeded_clients
     async with SessionLocal() as session:
         assert await get_job(session, c1_id, uuid4()) is None
 
 
 @pytest.mark.asyncio
-async def test_mark_started_done(seeded_clients):
+async def test_mark_started_done(SessionLocal, seeded_clients):
     c1_id, _, p1_id, _ = seeded_clients
     async with SessionLocal() as session:
         job = await create_job(session, c1_id, p1_id, endpoint="/ocr")
@@ -106,7 +117,7 @@ async def test_mark_started_done(seeded_clients):
 
 
 @pytest.mark.asyncio
-async def test_mark_failed(seeded_clients):
+async def test_mark_failed(SessionLocal, seeded_clients):
     c1_id, _, p1_id, _ = seeded_clients
     async with SessionLocal() as session:
         job = await create_job(session, c1_id, p1_id, endpoint="/ocr")
