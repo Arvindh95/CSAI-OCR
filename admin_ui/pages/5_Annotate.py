@@ -94,11 +94,16 @@ disp_w = native_w
 disp_h = native_h
 
 st.markdown(
-    """
+    f"""
     <style>
-    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="streamlit_drawable_canvas"]) {
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) {{
         overflow: auto !important;
-    }
+    }}
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(iframe[title*="drawable_canvas" i]) iframe {{
+        width: {disp_w}px !important;
+        min-width: {disp_w}px !important;
+        max-width: none !important;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -181,66 +186,65 @@ if need_overlay:
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
-col_canvas, col_form = st.columns([3, 2])
-
-with col_canvas:
-    with st.container(height=720, border=True):
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.2)",
-            stroke_width=2,
-            stroke_color="#FF0000",
-            background_image=bg_img,
-            update_streamlit=True,
-            height=disp_h,
-            width=disp_w,
-            drawing_mode="rect",
-            key=f"canvas_{tid}_{page['page_index']}",
-        )
-    components.html(
-        """
-        <script>
-        (function setup() {
-            const pdoc = window.parent.document;
-            const iframe = pdoc.querySelector('iframe[title*="streamlit_drawable_canvas"]');
-            if (!iframe) { setTimeout(setup, 250); return; }
-            const wrapper = iframe.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
-            if (!wrapper) { setTimeout(setup, 250); return; }
-            const idoc = iframe.contentDocument;
-            if (!idoc || !idoc.body) { setTimeout(setup, 250); return; }
-            if (idoc.__csaiPan) return;
-            idoc.__csaiPan = true;
-            let panning = false, sx = 0, sy = 0, lx = 0, ly = 0;
-            idoc.addEventListener('mousedown', (e) => {
-                if (e.button !== 1) return;
-                e.preventDefault();
-                panning = true;
-                sx = e.clientX; sy = e.clientY;
-                lx = wrapper.scrollLeft; ly = wrapper.scrollTop;
-                idoc.body.style.cursor = 'grabbing';
-            }, true);
-            idoc.addEventListener('mousemove', (e) => {
-                if (!panning) return;
-                wrapper.scrollLeft = lx - (e.clientX - sx);
-                wrapper.scrollTop = ly - (e.clientY - sy);
-            }, true);
-            const stop = (e) => {
-                if (!panning) return;
-                panning = false;
-                idoc.body.style.cursor = '';
-            };
-            idoc.addEventListener('mouseup', stop, true);
-            idoc.addEventListener('mouseleave', stop, true);
-            idoc.addEventListener('auxclick', (e) => {
-                if (e.button === 1) e.preventDefault();
-            }, true);
-        })();
-        </script>
-        """,
-        height=0,
+with st.container(height=720, border=True):
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.2)",
+        stroke_width=2,
+        stroke_color="#FF0000",
+        background_image=bg_img,
+        update_streamlit=True,
+        height=disp_h,
+        width=disp_w,
+        drawing_mode="rect",
+        key=f"canvas_{tid}_{page['page_index']}",
     )
+components.html(
+    """
+    <script>
+    (function setup() {
+        const pdoc = window.parent.document;
+        const iframes = pdoc.querySelectorAll('iframe[title*="drawable_canvas" i]');
+        const iframe = iframes[iframes.length - 1];
+        if (!iframe) { setTimeout(setup, 250); return; }
+        const wrapper = iframe.closest('div[data-testid="stVerticalBlockBorderWrapper"]');
+        if (!wrapper) { setTimeout(setup, 250); return; }
+        const idoc = iframe.contentDocument;
+        if (!idoc || !idoc.body) { setTimeout(setup, 250); return; }
+        if (idoc.__csaiPan) return;
+        idoc.__csaiPan = true;
+        let panning = false, sx = 0, sy = 0, lx = 0, ly = 0;
+        idoc.addEventListener('mousedown', (e) => {
+            if (e.button !== 1) return;
+            e.preventDefault();
+            panning = true;
+            sx = e.clientX; sy = e.clientY;
+            lx = wrapper.scrollLeft; ly = wrapper.scrollTop;
+            idoc.body.style.cursor = 'grabbing';
+        }, true);
+        idoc.addEventListener('mousemove', (e) => {
+            if (!panning) return;
+            wrapper.scrollLeft = lx - (e.clientX - sx);
+            wrapper.scrollTop = ly - (e.clientY - sy);
+        }, true);
+        const stop = () => {
+            if (!panning) return;
+            panning = false;
+            idoc.body.style.cursor = '';
+        };
+        idoc.addEventListener('mouseup', stop, true);
+        idoc.addEventListener('mouseleave', stop, true);
+        idoc.addEventListener('auxclick', (e) => {
+            if (e.button === 1) e.preventDefault();
+        }, true);
+    })();
+    </script>
+    """,
+    height=0,
+)
 
-with col_form:
-    st.subheader("Convert last rect → field")
+st.divider()
+st.subheader("Convert last rect → field")
+with st.container():
     rects = []
     if canvas_result.json_data and canvas_result.json_data.get("objects"):
         rects = [o for o in canvas_result.json_data["objects"]
