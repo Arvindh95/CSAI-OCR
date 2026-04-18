@@ -140,13 +140,13 @@ show_lines = c_ov2.checkbox("Show OCR line boxes",
                              help="Green boxes show exact OCR line bounds. "
                                   "Draw zones tight around them for best match. "
                                   "Load OCR lines first.")
-bg_img = pil_img
+bg_img = pil_img.resize((disp_w, disp_h), Image.LANCZOS).convert("RGB")
 need_overlay = show_existing or (show_lines and cached_lines)
 if need_overlay:
-    overlay = pil_img.copy()
+    overlay = bg_img.copy()
     draw = ImageDraw.Draw(overlay, "RGBA")
     try:
-        font = ImageFont.truetype("arial.ttf", 14)
+        font = ImageFont.truetype("arial.ttf", 13)
     except Exception:
         font = ImageFont.load_default()
     if show_lines and cached_lines:
@@ -154,7 +154,8 @@ if need_overlay:
             if "bbox" not in ln:
                 continue
             bx, by, bw, bh = ln["bbox"]
-            draw.rectangle([bx, by, bx + bw, by + bh],
+            draw.rectangle([bx * scale, by * scale,
+                            (bx + bw) * scale, (by + bh) * scale],
                             outline=(0, 200, 80, 220), width=1,
                             fill=(0, 200, 80, 25))
     if show_existing:
@@ -170,10 +171,11 @@ if need_overlay:
             if max(zx, zy, zw, zh) <= 1.0:
                 zx *= native_w; zy *= native_h
                 zw *= native_w; zh *= native_h
-            draw.rectangle([zx, zy, zx + zw, zy + zh],
+            draw.rectangle([zx * scale, zy * scale,
+                            (zx + zw) * scale, (zy + zh) * scale],
                             outline=(0, 180, 255, 255), width=2,
                             fill=(0, 180, 255, 40))
-            draw.text((zx + 2, max(0, zy - 16)), f["name"],
+            draw.text((zx * scale + 2, max(0, zy * scale - 15)), f["name"],
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
