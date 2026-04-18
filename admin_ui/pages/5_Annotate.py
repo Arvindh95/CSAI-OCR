@@ -19,7 +19,6 @@ if not hasattr(_st_image, "image_to_url"):
     _st_image.image_to_url = _image_to_url_shim
 
 from streamlit_drawable_canvas import st_canvas
-import streamlit.components.v1 as components
 
 from admin_ui.api import get_page_lines, get_template, update_template
 
@@ -107,21 +106,19 @@ st.markdown(
     """
     <style>
     section.main div.block-container { max-width: 100%; padding-left: 1rem; padding-right: 1rem; }
-    div[data-testid="element-container"]:has(> iframe[title*="streamlit_drawable_canvas"]) {
-        overflow: auto !important;
-        max-height: 80vh;
-        max-width: 100%;
-        border: 1px solid rgba(128,128,128,0.2);
-        border-radius: 4px;
-    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+viewport_h = st.slider("Viewport height (px)", 400, 1400,
+                        value=st.session_state.get(f"vh_{tid}", 720), step=40,
+                        key=f"vh_{tid}",
+                        help="Scrollable window height. Canvas scrolls inside it.")
+
 st.caption(f"Draw rectangles over zones. Zoom {zoom}% · "
            f"canvas {disp_w}×{disp_h} · native {native_w}×{native_h}. "
-           "Scroll to pan if canvas exceeds viewport.")
+           f"Scroll inside {viewport_h}px viewport to pan.")
 
 lines_key = f"lines_{tid}_{page['page_index']}"
 c_fetch, c_status = st.columns([1, 3])
@@ -199,43 +196,18 @@ if need_overlay:
                        fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
-canvas_result = st_canvas(
-    fill_color="rgba(255, 165, 0, 0.2)",
-    stroke_width=2,
-    stroke_color="#FF0000",
-    background_image=bg_img,
-    update_streamlit=True,
-    height=disp_h,
-    width=disp_w,
-    drawing_mode="rect",
-    key=f"canvas_{tid}_{page['page_index']}",
-)
-
-components.html(
-    """
-    <script>
-    (function style() {
-        const doc = window.parent.document;
-        const iframes = doc.querySelectorAll('iframe[title*="canvas"]');
-        let done = 0;
-        iframes.forEach(iframe => {
-            const p = iframe.parentNode;
-            if (p && !p.dataset.scrollStyled) {
-                p.style.overflow = 'auto';
-                p.style.maxHeight = '80vh';
-                p.style.maxWidth = '100%';
-                p.style.border = '1px solid rgba(128,128,128,0.3)';
-                p.style.borderRadius = '6px';
-                p.dataset.scrollStyled = '1';
-            }
-            done++;
-        });
-        if (done === 0) { setTimeout(style, 200); }
-    })();
-    </script>
-    """,
-    height=0,
-)
+with st.container(height=viewport_h, border=True):
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.2)",
+        stroke_width=2,
+        stroke_color="#FF0000",
+        background_image=bg_img,
+        update_streamlit=True,
+        height=disp_h,
+        width=disp_w,
+        drawing_mode="rect",
+        key=f"canvas_{tid}_{page['page_index']}",
+    )
 
 st.divider()
 st.subheader("Convert last rect → field")
