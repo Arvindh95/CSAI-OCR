@@ -4,6 +4,12 @@ from pathlib import Path
 import httpx
 import streamlit as st
 from PIL import Image
+
+import streamlit.elements.image as _st_image
+if not hasattr(_st_image, "image_to_url"):
+    from streamlit.elements.lib.image_utils import image_to_url as _image_to_url
+    _st_image.image_to_url = _image_to_url
+
 from streamlit_drawable_canvas import st_canvas
 
 from admin_ui.api import get_template, update_template
