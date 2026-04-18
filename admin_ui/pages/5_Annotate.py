@@ -174,14 +174,6 @@ if need_overlay:
 if bg_img.size != (disp_w, disp_h):
     bg_img = bg_img.resize((disp_w, disp_h), Image.LANCZOS)
 
-import hashlib as _hashlib
-_bg_bytes = bg_img.tobytes()
-_bg_hash = _hashlib.md5(_bg_bytes).hexdigest()[:10]
-_num_zones = sum(1 for f in st.session_state[draft_key]
-                 if f.get("strategy") == "zone"
-                 and f.get("page_index") == page["page_index"])
-_overlay_tag = f"ex{int(show_existing)}ln{int(show_lines and bool(cached_lines))}n{_num_zones}"
-
 col_canvas, col_form = st.columns([3, 2])
 
 with col_canvas:
@@ -194,7 +186,7 @@ with col_canvas:
         height=disp_h,
         width=disp_w,
         drawing_mode="rect",
-        key=f"canvas_{tid}_{page['page_index']}_{_overlay_tag}_{_bg_hash}",
+        key=f"canvas_{tid}_{page['page_index']}",
     )
 
 with col_form:
