@@ -1,0 +1,101 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 0,
+  "title": "CSAI-OCR Overview",
+  "uid": "csai-ocr-overview",
+  "timezone": "",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "tags": ["csai", "ocr"],
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Queue depth",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "csai_queue_depth", "refId": "A"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background", "graphMode": "area"}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Active clients (scrape window)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "csai_active_clients", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Quota denies (5m rate)",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(csai_quota_denies_total[5m]))", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Auth failures (5m rate)",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(rate(csai_auth_failures_total[5m]))", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Jobs per minute by status",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (status) (rate(csai_jobs_total[1m])) * 60", "refId": "A", "legendFormat": "{{status}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "fillOpacity": 20}}}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Jobs submitted by template",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (template) (rate(csai_jobs_submitted_total[5m])) * 60", "refId": "A", "legendFormat": "{{template}}"}],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "bars", "fillOpacity": 50}}}
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "OCR duration (p50/p95/p99)",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le) (rate(csai_ocr_duration_seconds_bucket[5m])))", "refId": "A", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(csai_ocr_duration_seconds_bucket[5m])))", "refId": "B", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(csai_ocr_duration_seconds_bucket[5m])))", "refId": "C", "legendFormat": "p99"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "HTTP requests per minute by status",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum by (status_code) (rate(http_requests_total[1m])) * 60", "refId": "A", "legendFormat": "{{status_code}}"}],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "HTTP latency p95 by handler",
+      "gridPos": {"x": 0, "y": 20, "w": 24, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (handler, le) (rate(http_request_duration_seconds_bucket[5m])))", "refId": "A", "legendFormat": "{{handler}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    }
+  ]
+}

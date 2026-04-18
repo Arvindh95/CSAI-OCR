@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    service: csai-ocr
+
+scrape_configs:
+  - job_name: csai-ocr-api
+    static_configs:
+      - targets: ['127.0.0.1:8003']
+    metrics_path: /metrics
+    scheme: http
