@@ -19,6 +19,7 @@ if not hasattr(_st_image, "image_to_url"):
     _st_image.image_to_url = _image_to_url_shim
 
 from streamlit_drawable_canvas import st_canvas
+import streamlit.components.v1 as components
 
 from admin_ui.api import get_page_lines, get_template, update_template
 
@@ -208,6 +209,31 @@ canvas_result = st_canvas(
     width=disp_w,
     drawing_mode="rect",
     key=f"canvas_{tid}_{page['page_index']}",
+)
+
+components.html(
+    """
+    <script>
+    (function wrap() {
+        const doc = window.parent.document;
+        const iframes = doc.querySelectorAll('iframe[title*="canvas"]');
+        let done = 0;
+        iframes.forEach(iframe => {
+            if (iframe.dataset.scrollWrapped) { done++; return; }
+            const wrap = doc.createElement('div');
+            wrap.style.cssText = 'overflow:auto;max-height:80vh;max-width:100%;' +
+                'border:1px solid rgba(128,128,128,0.3);border-radius:6px;' +
+                'background:#1a1a1a;';
+            iframe.parentNode.insertBefore(wrap, iframe);
+            wrap.appendChild(iframe);
+            iframe.dataset.scrollWrapped = '1';
+            done++;
+        });
+        if (done === 0) { setTimeout(wrap, 200); }
+    })();
+    </script>
+    """,
+    height=0,
 )
 
 st.divider()
