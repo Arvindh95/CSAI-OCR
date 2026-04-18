@@ -214,22 +214,23 @@ canvas_result = st_canvas(
 components.html(
     """
     <script>
-    (function wrap() {
+    (function style() {
         const doc = window.parent.document;
         const iframes = doc.querySelectorAll('iframe[title*="canvas"]');
         let done = 0;
         iframes.forEach(iframe => {
-            if (iframe.dataset.scrollWrapped) { done++; return; }
-            const wrap = doc.createElement('div');
-            wrap.style.cssText = 'overflow:auto;max-height:80vh;max-width:100%;' +
-                'border:1px solid rgba(128,128,128,0.3);border-radius:6px;' +
-                'background:#1a1a1a;';
-            iframe.parentNode.insertBefore(wrap, iframe);
-            wrap.appendChild(iframe);
-            iframe.dataset.scrollWrapped = '1';
+            const p = iframe.parentNode;
+            if (p && !p.dataset.scrollStyled) {
+                p.style.overflow = 'auto';
+                p.style.maxHeight = '80vh';
+                p.style.maxWidth = '100%';
+                p.style.border = '1px solid rgba(128,128,128,0.3)';
+                p.style.borderRadius = '6px';
+                p.dataset.scrollStyled = '1';
+            }
             done++;
         });
-        if (done === 0) { setTimeout(wrap, 200); }
+        if (done === 0) { setTimeout(style, 200); }
     })();
     </script>
     """,
