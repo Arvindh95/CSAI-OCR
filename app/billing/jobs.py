@@ -17,9 +17,10 @@ async def create_job(
     body_hash: bytes | None = None,
     input_meta: dict | None = None,
     ip_address: str | None = None,
+    job_id: UUID | None = None,
 ) -> Job:
     job = Job(
-        id=uuid4(),
+        id=job_id or uuid4(),
         client_id=client_id,
         period_id=period_id,
         endpoint=endpoint,
