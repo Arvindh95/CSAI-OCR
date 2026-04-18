@@ -2,11 +2,22 @@ import re
 from datetime import datetime
 
 
+_LABEL_PREFIX_RE = re.compile(r"^[\s:：\-–—]+")
+_LABEL_SUFFIX_RE = re.compile(r"[\s:：\-–—]+$")
+
+
+def _strip_label_punct(s: str) -> str:
+    s = _LABEL_PREFIX_RE.sub("", s)
+    s = _LABEL_SUFFIX_RE.sub("", s)
+    return s.strip()
+
+
 def _as_date(s: str) -> str | None:
+    cleaned = _strip_label_punct(s)
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y",
                 "%d %b %Y", "%d %B %Y", "%d-%b-%Y", "%d/%m/%y", "%Y/%m/%d"):
         try:
-            return datetime.strptime(s.strip(), fmt).date().isoformat()
+            return datetime.strptime(cleaned, fmt).date().isoformat()
         except ValueError:
             continue
     return None
@@ -27,11 +38,11 @@ def apply_post_process(value: str | None, rule: str | None):
         return value
     rule = rule.lower()
     if rule == "trim":
-        return value.strip()
+        return _strip_label_punct(value)
     if rule == "uppercase":
-        return value.strip().upper()
+        return _strip_label_punct(value).upper()
     if rule == "lowercase":
-        return value.strip().lower()
+        return _strip_label_punct(value).lower()
     if rule == "number":
         return _as_number(value)
     if rule == "date":
