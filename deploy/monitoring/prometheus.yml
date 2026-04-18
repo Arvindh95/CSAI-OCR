@@ -10,3 +10,9 @@ scrape_configs:
       - targets: ['127.0.0.1:8003']
     metrics_path: /metrics
     scheme: http
+
+  - job_name: csai-ocr-worker
+    static_configs:
+      - targets: ['127.0.0.1:8004']
+    metrics_path: /metrics
+    scheme: http
