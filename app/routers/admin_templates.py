@@ -307,16 +307,30 @@ async def upload_page(
     data = await file.read()
     if not data:
         raise BadRequest("empty file")
+    import io as _io
     try:
-        img = Image.open(__import__("io").BytesIO(data))
+        img = Image.open(_io.BytesIO(data))
         img.load()
         width, height = img.size
     except Exception as e:
         raise BadRequest(f"invalid image: {e}")
 
-    suffix = (file.filename or "page").rsplit(".", 1)[-1].lower()
-    if suffix not in ("jpg", "jpeg", "png"):
+    MIN_W = 1500
+    if width < MIN_W:
+        ratio = MIN_W / width
+        new_w = MIN_W
+        new_h = int(round(height * ratio))
+        img = img.convert("RGB").resize((new_w, new_h), Image.LANCZOS)
+        width, height = new_w, new_h
+        buf = _io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        data = buf.getvalue()
         suffix = "png"
+    else:
+        suffix = (file.filename or "page").rsplit(".", 1)[-1].lower()
+        if suffix not in ("jpg", "jpeg", "png"):
+            suffix = "png"
+
     dest = _template_dir(template_id) / f"page_{page_index}.{suffix}"
     dest.write_bytes(data)
 

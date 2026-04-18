@@ -123,34 +123,51 @@ if draft_key not in st.session_state:
         for f in tpl["fields"]
     ]
 
-show_existing = st.checkbox("Show existing draft zones on canvas",
+c_ov1, c_ov2 = st.columns(2)
+show_existing = c_ov1.checkbox("Show existing draft zones",
+                                value=True,
+                                key=f"showex_{tid}_{page['page_index']}")
+show_lines = c_ov2.checkbox("Show OCR line boxes",
                              value=True,
-                             key=f"showex_{tid}_{page['page_index']}")
+                             key=f"showln_{tid}_{page['page_index']}",
+                             help="Green boxes show exact OCR line bounds. "
+                                  "Draw zones tight around them for best match. "
+                                  "Load OCR lines first.")
 bg_img = pil_img
-if show_existing:
+need_overlay = show_existing or (show_lines and cached_lines)
+if need_overlay:
     overlay = pil_img.copy()
     draw = ImageDraw.Draw(overlay, "RGBA")
     try:
         font = ImageFont.truetype("arial.ttf", 14)
     except Exception:
         font = ImageFont.load_default()
-    for f in st.session_state[draft_key]:
-        if f.get("strategy") != "zone" or f.get("page_index") != page["page_index"]:
-            continue
-        cfg = f.get("config", {})
-        try:
-            zx = float(cfg["x"]); zy = float(cfg["y"])
-            zw = float(cfg["w"]); zh = float(cfg["h"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if max(zx, zy, zw, zh) <= 1.0:
-            zx *= native_w; zy *= native_h
-            zw *= native_w; zh *= native_h
-        draw.rectangle([zx, zy, zx + zw, zy + zh],
-                        outline=(0, 180, 255, 255), width=2,
-                        fill=(0, 180, 255, 40))
-        draw.text((zx + 2, max(0, zy - 16)), f["name"],
-                   fill=(0, 120, 200, 255), font=font)
+    if show_lines and cached_lines:
+        for ln in cached_lines:
+            if "bbox" not in ln:
+                continue
+            bx, by, bw, bh = ln["bbox"]
+            draw.rectangle([bx, by, bx + bw, by + bh],
+                            outline=(0, 200, 80, 220), width=1,
+                            fill=(0, 200, 80, 25))
+    if show_existing:
+        for f in st.session_state[draft_key]:
+            if f.get("strategy") != "zone" or f.get("page_index") != page["page_index"]:
+                continue
+            cfg = f.get("config", {})
+            try:
+                zx = float(cfg["x"]); zy = float(cfg["y"])
+                zw = float(cfg["w"]); zh = float(cfg["h"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if max(zx, zy, zw, zh) <= 1.0:
+                zx *= native_w; zy *= native_h
+                zw *= native_w; zh *= native_h
+            draw.rectangle([zx, zy, zx + zw, zy + zh],
+                            outline=(0, 180, 255, 255), width=2,
+                            fill=(0, 180, 255, 40))
+            draw.text((zx + 2, max(0, zy - 16)), f["name"],
+                       fill=(0, 120, 200, 255), font=font)
     bg_img = overlay
 
 col_canvas, col_form = st.columns([3, 2])
