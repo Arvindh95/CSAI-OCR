@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Venv
+venv/
+.venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+ocr_api.log
+ocr_ui.log
+
+# Models / caches
+models/
+.paddleocr_cache/
+.paddlex/
+paddlex/
+*.pdparams
+*.pdiparams
+*.onnx
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Build / dist
+build/
+dist/
+*.egg-info/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Uploads / outputs
+uploads/
+outputs/
+tmp/
