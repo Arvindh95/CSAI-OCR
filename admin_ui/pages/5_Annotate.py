@@ -229,6 +229,11 @@ with col_form:
                     st.caption(f"• [{r_ov:.0%}] {ln['text']}")
                 preview_text = " ".join(ln["text"] for ln, _ in hits)
                 st.success(f"Merged: `{preview_text}`")
+                words = preview_text.split()
+                if words:
+                    st.markdown("**Word index** (for `word_index` / `word_slice`)")
+                    st.code(" | ".join(f"{i}:{w}" for i, w in enumerate(words)),
+                             language=None)
 
         with st.form(f"addfield_{tid}_{len(rects)}"):
             fname = st.text_input("Field name")
