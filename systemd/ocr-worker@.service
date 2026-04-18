@@ -1,0 +1,28 @@
+[Unit]
+Description=CSAI-OCR worker (%i)
+After=network.target redis-server.service postgresql.service
+Requires=redis-server.service
+
+[Service]
+Type=simple
+User=claudeuser
+Group=claudeuser
+WorkingDirectory=/opt/ocr-saas
+Environment=PYTHONPATH=/opt/ocr-saas
+Environment=HOME=/opt/ocr-saas
+EnvironmentFile=/opt/ocr-saas/.env
+ExecStart=/opt/ocr-saas/venv/bin/rq worker --url redis://127.0.0.1:6379/0 csai-ocr
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/opt/ocr-saas /var/log/ocr /tmp
+
+StandardOutput=append:/var/log/ocr/worker-%i.log
+StandardError=append:/var/log/ocr/worker-%i.err
+
+[Install]
+WantedBy=multi-user.target
