@@ -12,6 +12,37 @@ def _overlap_ratio(line_bbox, zone):
     return inter / line_area
 
 
+import re
+
+
+def _apply_extract(text: str, config: dict) -> str | None:
+    pattern = config.get("extract_regex")
+    if pattern:
+        m = re.search(pattern, text)
+        if not m:
+            return None
+        return m.group(1) if m.groups() else m.group(0)
+
+    word_index = config.get("word_index")
+    if word_index is not None:
+        words = text.split()
+        try:
+            return words[int(word_index)]
+        except (IndexError, ValueError):
+            return None
+
+    word_slice = config.get("word_slice")
+    if word_slice is not None:
+        words = text.split()
+        try:
+            if isinstance(word_slice, (list, tuple)) and len(word_slice) == 2:
+                a, b = int(word_slice[0]), int(word_slice[1])
+                return " ".join(words[a:b])
+        except (IndexError, ValueError):
+            return None
+    return text
+
+
 def find_in_zone(lines_on_page: list[dict], config: dict,
                  img_w: int | None = None, img_h: int | None = None) -> str | None:
     x = float(config["x"])
@@ -37,6 +68,5 @@ def find_in_zone(lines_on_page: list[dict], config: dict,
     if not hits:
         return None
     hits.sort(key=lambda l: (l["bbox"][1], l["bbox"][0]))
-    if merge:
-        return " ".join(l["text"] for l in hits)
-    return hits[0]["text"]
+    merged = " ".join(l["text"] for l in hits) if merge else hits[0]["text"]
+    return _apply_extract(merged, config)
