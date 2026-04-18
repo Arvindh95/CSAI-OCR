@@ -3,7 +3,7 @@ from pathlib import Path
 
 import httpx
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 import streamlit.elements.image as _st_image
 if not hasattr(_st_image, "image_to_url"):
@@ -123,6 +123,36 @@ if draft_key not in st.session_state:
         for f in tpl["fields"]
     ]
 
+show_existing = st.checkbox("Show existing draft zones on canvas",
+                             value=True,
+                             key=f"showex_{tid}_{page['page_index']}")
+bg_img = pil_img
+if show_existing:
+    overlay = pil_img.copy()
+    draw = ImageDraw.Draw(overlay, "RGBA")
+    try:
+        font = ImageFont.truetype("arial.ttf", 14)
+    except Exception:
+        font = ImageFont.load_default()
+    for f in st.session_state[draft_key]:
+        if f.get("strategy") != "zone" or f.get("page_index") != page["page_index"]:
+            continue
+        cfg = f.get("config", {})
+        try:
+            zx = float(cfg["x"]); zy = float(cfg["y"])
+            zw = float(cfg["w"]); zh = float(cfg["h"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if max(zx, zy, zw, zh) <= 1.0:
+            zx *= native_w; zy *= native_h
+            zw *= native_w; zh *= native_h
+        draw.rectangle([zx, zy, zx + zw, zy + zh],
+                        outline=(0, 180, 255, 255), width=2,
+                        fill=(0, 180, 255, 40))
+        draw.text((zx + 2, max(0, zy - 16)), f["name"],
+                   fill=(0, 120, 200, 255), font=font)
+    bg_img = overlay
+
 col_canvas, col_form = st.columns([3, 2])
 
 with col_canvas:
@@ -130,7 +160,7 @@ with col_canvas:
         fill_color="rgba(255, 165, 0, 0.2)",
         stroke_width=2,
         stroke_color="#FF0000",
-        background_image=pil_img,
+        background_image=bg_img,
         update_streamlit=True,
         height=disp_h,
         width=disp_w,
