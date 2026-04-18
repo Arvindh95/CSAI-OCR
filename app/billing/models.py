@@ -72,6 +72,9 @@ class Job(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(INET, nullable=True)
+    template_id: Mapped[int | None] = mapped_column(
+        ForeignKey("doc_templates.id"), nullable=True)
+    template_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class AuditLog(Base):
