@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -229,11 +230,22 @@ with col_form:
                     st.caption(f"• [{r_ov:.0%}] {ln['text']}")
                 preview_text = " ".join(ln["text"] for ln, _ in hits)
                 st.success(f"Merged: `{preview_text}`")
-                words = preview_text.split()
-                if words:
-                    st.markdown("**Word index** (for `word_index` / `word_slice`)")
-                    st.code(" | ".join(f"{i}:{w}" for i, w in enumerate(words)),
-                             language=None)
+
+        words = preview_text.split() if preview_text else []
+        picked_indices: list[int] = []
+        if words:
+            opts = [f"{i}: {w}" for i, w in enumerate(words)]
+            picks = st.multiselect(
+                "Pick word(s) to keep (leave empty = full line)",
+                options=opts,
+                key=f"pickw_{tid}_{page['page_index']}_{len(rects)}",
+                help="Select one or more words. Contiguous = word_slice, "
+                     "single = word_index, scattered = extract_regex.",
+            )
+            picked_indices = sorted(int(p.split(":", 1)[0]) for p in picks)
+            if picked_indices:
+                picked_text = " ".join(words[i] for i in picked_indices)
+                st.info(f"Will extract: `{picked_text}`")
 
         with st.form(f"addfield_{tid}_{len(rects)}"):
             fname = st.text_input("Field name")
@@ -247,13 +259,25 @@ with col_form:
                 if not fname.strip():
                     st.error("Field name required.")
                 else:
+                    cfg = {"x": x, "y": y, "w": w, "h": h,
+                           "merge": merge,
+                           "min_overlap": float(preview_min_overlap)}
+                    if picked_indices:
+                        contiguous = (picked_indices == list(
+                            range(picked_indices[0], picked_indices[-1] + 1)))
+                        if len(picked_indices) == 1:
+                            cfg["word_index"] = picked_indices[0]
+                        elif contiguous:
+                            cfg["word_slice"] = [picked_indices[0],
+                                                  picked_indices[-1] + 1]
+                        else:
+                            escaped = [re.escape(words[i]) for i in picked_indices]
+                            cfg["extract_regex"] = r"\s+".join(escaped)
                     st.session_state[draft_key].append({
                         "name": fname.strip(),
                         "page_index": page["page_index"],
                         "strategy": "zone",
-                        "config": {"x": x, "y": y, "w": w, "h": h,
-                                    "merge": merge,
-                                    "min_overlap": float(preview_min_overlap)},
+                        "config": cfg,
                         "post_process": None if post == "(none)" else post,
                         "required": required,
                         "display_order": int(order),
