@@ -20,7 +20,21 @@ if not hasattr(_st_image, "image_to_url"):
 
 from streamlit_drawable_canvas import st_canvas
 
-from admin_ui.api import get_template, update_template
+from admin_ui.api import get_page_lines, get_template, update_template
+
+
+def _overlap_ratio(line_bbox, zone):
+    lx, ly, lw, lh = line_bbox
+    zx1, zy1, zx2, zy2 = zone
+    ix1 = max(lx, zx1)
+    iy1 = max(ly, zy1)
+    ix2 = min(lx + lw, zx2)
+    iy2 = min(ly + lh, zy2)
+    if ix2 <= ix1 or iy2 <= iy1:
+        return 0.0
+    inter = (ix2 - ix1) * (iy2 - iy1)
+    line_area = max(lw * lh, 1)
+    return inter / line_area
 
 st.set_page_config(page_title="Annotate", layout="wide")
 st.title("Annotate template zones")
@@ -82,6 +96,23 @@ disp_h = int(native_h * scale)
 st.caption(f"Draw rectangles over zones. Display scale: {scale:.2f} "
            f"(coords auto-converted to native {native_w}×{native_h}).")
 
+lines_key = f"lines_{tid}_{page['page_index']}"
+c_fetch, c_status = st.columns([1, 3])
+if c_fetch.button("Load OCR lines (preview)"):
+    try:
+        with st.spinner("Running OCR on page..."):
+            res = get_page_lines(tid, page["page_index"])
+        st.session_state[lines_key] = res.get("lines", [])
+        st.success(f"Loaded {len(st.session_state[lines_key])} lines.")
+    except Exception as e:
+        st.error(_err(e))
+cached_lines = st.session_state.get(lines_key)
+if cached_lines is not None:
+    c_status.caption(f"📄 {len(cached_lines)} OCR lines cached · "
+                     "preview active below canvas")
+else:
+    c_status.caption("No OCR lines loaded. Click ← to enable live preview.")
+
 draft_key = f"draft_fields_{tid}"
 if draft_key not in st.session_state:
     st.session_state[draft_key] = [
@@ -122,6 +153,36 @@ with col_form:
         w = int(last["width"] * last.get("scaleX", 1) / scale)
         h = int(last["height"] * last.get("scaleY", 1) / scale)
         st.code(f"native coords: x={x}  y={y}  w={w}  h={h}")
+
+        preview_lines = st.session_state.get(lines_key)
+        preview_min_overlap = st.slider(
+            "min_overlap (preview + saved)", 0.0, 1.0, 0.3, 0.05,
+            key=f"minov_{tid}_{page['page_index']}_{len(rects)}",
+        )
+        if preview_lines is None:
+            st.info("Load OCR lines above to see live preview.")
+            preview_text = None
+        else:
+            zone = (x, y, x + w, y + h)
+            hits = []
+            for ln in preview_lines:
+                if "bbox" not in ln:
+                    continue
+                r_ov = _overlap_ratio(ln["bbox"], zone)
+                if r_ov >= preview_min_overlap:
+                    hits.append((ln, r_ov))
+            hits.sort(key=lambda t: (t[0]["bbox"][1], t[0]["bbox"][0]))
+            if not hits:
+                st.warning("No lines match this zone. Draw bigger box "
+                           "or lower min_overlap.")
+                preview_text = None
+            else:
+                st.markdown("**Preview (captured lines)**")
+                for ln, r_ov in hits:
+                    st.caption(f"• [{r_ov:.0%}] {ln['text']}")
+                preview_text = " ".join(ln["text"] for ln, _ in hits)
+                st.success(f"Merged: `{preview_text}`")
+
         with st.form(f"addfield_{tid}_{len(rects)}"):
             fname = st.text_input("Field name")
             post = st.selectbox("post_process",
@@ -138,7 +199,9 @@ with col_form:
                         "name": fname.strip(),
                         "page_index": page["page_index"],
                         "strategy": "zone",
-                        "config": {"x": x, "y": y, "w": w, "h": h, "merge": merge},
+                        "config": {"x": x, "y": y, "w": w, "h": h,
+                                    "merge": merge,
+                                    "min_overlap": float(preview_min_overlap)},
                         "post_process": None if post == "(none)" else post,
                         "required": required,
                         "display_order": int(order),

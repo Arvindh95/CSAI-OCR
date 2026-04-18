@@ -177,6 +177,16 @@ def delete_page(template_id: int, page_index: int) -> dict:
         return r.json()
 
 
+def get_page_lines(template_id: int, page_index: int) -> dict:
+    with _c() as c:
+        r = c.get(
+            f"/admin/v1/templates/{template_id}/pages/{page_index}/lines",
+            timeout=120.0,
+        )
+        r.raise_for_status()
+        return r.json()
+
+
 def test_template(template_id: int, filename: str,
                   content: bytes, mime: str) -> dict:
     with _c() as c:

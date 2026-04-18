@@ -357,6 +357,21 @@ def _run_ocr_sync(path: str) -> list[dict]:
     return extract_lines(get_ocr(), path)
 
 
+@router.get("/templates/{template_id}/pages/{page_index}/lines")
+async def get_page_lines(template_id: int, page_index: int,
+                          session: AsyncSession = Depends(get_session)):
+    row = await session.get(TemplatePage, (template_id, page_index))
+    if row is None:
+        raise NotFound(f"page {page_index} not found on template {template_id}")
+    loop = asyncio.get_event_loop()
+    lines = await loop.run_in_executor(None, _run_ocr_sync, row.image_path)
+    return {
+        "lines": lines,
+        "image_width": row.image_width,
+        "image_height": row.image_height,
+    }
+
+
 @router.post("/templates/{template_id}/test", response_model=TestResult)
 async def test_template(
     template_id: int,
