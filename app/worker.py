@@ -26,9 +26,12 @@ _engine = None
 def ocr_engine():
     global _engine
     if _engine is None:
+        os.environ["FLAGS_use_mkldnn"] = "0"
         from paddleocr import PaddleOCR
         _engine = PaddleOCR(use_doc_orientation_classify=False,
-                            use_doc_unwarping=False, use_textline_orientation=False)
+                            use_doc_unwarping=False,
+                            use_textline_orientation=False,
+                            enable_mkldnn=False)
     return _engine
 
 
