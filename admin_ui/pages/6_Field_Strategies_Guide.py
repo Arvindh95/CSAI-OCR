@@ -178,7 +178,7 @@ big string.  Your regex pattern is searched against that string.
 
 st.subheader("Examples")
 
-ex1, ex2, ex3 = st.columns(3)
+ex1, ex2, ex3, ex4 = st.columns(4)
 
 with ex1:
     st.markdown("**Extract registration number**")
@@ -231,6 +231,24 @@ with ex3:
         "post_process": "date",
         "required": False,
         "display_order": 2,
+    })
+
+with ex4:
+    st.markdown("**Extract text between two keywords**")
+    st.markdown("Pattern: `KEYWORD1(.*?)KEYWORD2`")
+    st.markdown("Captures text sandwiched between two labels. Use `[\\\\s\\\\S]*?` to span multiple lines.")
+    st.json({
+        "name": "modal_berbayar",
+        "page_index": 0,
+        "strategy": "regex",
+        "config": {
+            "pattern": "MODAL BERBAYAR[\\s:]+([\\s\\S]*?)(?=TARIKH|$)",
+            "group": 1,
+            "ignore_case": True,
+        },
+        "post_process": "trim",
+        "required": False,
+        "display_order": 3,
     })
 
 with st.expander("Regex config reference"):
