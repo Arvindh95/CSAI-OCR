@@ -63,6 +63,33 @@ with st.expander("Zone: extract specific words"):
     Captures everything after the colon.
     """)
 
+with st.expander("Zone: worked example"):
+    st.markdown("""
+    **Scenario:** Extract the registration number from an SSM certificate.
+    The number always appears at the same position on every certificate.
+
+    **What OCR sees on the page (each line is a separate OCR result):**
+    """)
+    st.code(
+        "Line @ y=228  bbox=(100,228,150,16)  text='NO. PENDAFTARAN'\n"
+        "Line @ y=244  bbox=(248,244,70,14)   text='MA0127232-D'\n"
+        "Line @ y=260  bbox=(100,260,200,16)  text='TARIKH PENDAFTARAN'",
+        language=None,
+    )
+    st.markdown("**Zone drawn:** `x=248, y=236, w=73, h=15`  ← tightly around the number line")
+    st.markdown("**Overlap check:** the `MA0127232-D` line bbox overlaps the zone by >30% → captured.")
+    st.json({
+        "name": "no_pendaftaran",
+        "strategy": "zone",
+        "config": {"x": 248, "y": 236, "w": 73, "h": 15, "merge": True, "min_overlap": 0.3},
+        "post_process": "trim",
+    })
+    st.success("Extracted → `MA0127232-D`")
+    st.markdown("""
+    **What if the zone also catches the label line above?**
+    Raise `min_overlap` to `0.6` — the label line only overlaps the zone by ~10%, so it gets filtered out.
+    """)
+
 st.divider()
 
 # ── Anchor ────────────────────────────────────────────────────────────────────
@@ -161,6 +188,63 @@ with st.expander("Anchor: multiple labels (aliases)"):
     Matching is **case-insensitive** and checks if the label appears **anywhere**
     in the OCR line text.
     """)
+
+with st.expander("Anchor: worked examples"):
+    st.markdown("#### `same_line_colon`")
+    st.markdown("**OCR text on the page (lines joined):**")
+    st.code(
+        "SIJIL PENDAFTARAN PERNIAGAAN\n"
+        "NAMA PERNIAGAAN : DFG TELECOMMUNICATION SDN BHD\n"
+        "NO. PENDAFTARAN : MA0127232-D\n"
+        "TARIKH PENDAFTARAN : 08-09-2008\n"
+        "STATUS : AKTIF",
+        language=None,
+    )
+    st.json({
+        "name": "nama_perniagaan",
+        "strategy": "anchor",
+        "config": {"labels": ["NAMA PERNIAGAAN"], "direction": "same_line_colon"},
+        "post_process": "trim",
+    })
+    st.success("Extracted → `DFG TELECOMMUNICATION SDN BHD`")
+    st.caption("Engine finds the line containing 'NAMA PERNIAGAAN', then captures everything after the ':'.")
+
+    st.divider()
+
+    st.markdown("#### `right`")
+    st.markdown("**OCR sees two separate boxes on the same row** (common in table-style layouts):")
+    st.code(
+        "Box A  bbox=(50,100,140,16)   text='NAMA PERNIAGAAN'\n"
+        "Box B  bbox=(250,100,220,16)  text='DFG TELECOMMUNICATION'",
+        language=None,
+    )
+    st.json({
+        "name": "nama_perniagaan",
+        "strategy": "anchor",
+        "config": {"labels": ["NAMA PERNIAGAAN"], "direction": "right", "max_distance_px": 300},
+        "post_process": "trim",
+    })
+    st.success("Extracted → `DFG TELECOMMUNICATION`")
+    st.caption("Engine finds 'NAMA PERNIAGAAN', then picks the nearest box to its right within 300 px.")
+
+    st.divider()
+
+    st.markdown("#### `below`")
+    st.markdown("**OCR sees the label and value on separate lines** (common in address blocks):")
+    st.code(
+        "Line @ y=200  text='ALAMAT BERDAFTAR'\n"
+        "Line @ y=220  text='NO. 5, JALAN KENANGA 1/1'\n"
+        "Line @ y=238  text='41200 KLANG, SELANGOR'",
+        language=None,
+    )
+    st.json({
+        "name": "alamat",
+        "strategy": "anchor",
+        "config": {"labels": ["ALAMAT BERDAFTAR"], "direction": "below", "max_distance_px": 200},
+        "post_process": "trim",
+    })
+    st.success("Extracted → `NO. 5, JALAN KENANGA 1/1`")
+    st.caption("Engine finds 'ALAMAT BERDAFTAR', then picks the nearest line directly below it.")
 
 st.divider()
 
@@ -266,6 +350,60 @@ with st.expander("Regex config reference"):
     - Test your regex at [regex101.com](https://regex101.com/) (select Python flavor)
     """)
 
+with st.expander("Regex: worked examples"):
+    st.markdown("**All OCR lines on the page are joined into one string before matching:**")
+    st.code(
+        "SURUHANJAYA SYARIKAT MALAYSIA\n"
+        "SIJIL PENDAFTARAN PERNIAGAAN\n"
+        "NAMA PERNIAGAAN : DFG TELECOMMUNICATION SDN BHD\n"
+        "NO. PENDAFTARAN : MA0127232-D\n"
+        "TARIKH PENDAFTARAN : 08-09-2008\n"
+        "MODAL BERBAYAR : RM 50,000.00\n"
+        "STATUS : AKTIF",
+        language=None,
+    )
+
+    st.divider()
+
+    r1, r2 = st.columns(2)
+
+    with r1:
+        st.markdown("**Example 1 — Extract registration number**")
+        st.markdown("Pattern: `(MA\\d{7}-[A-Z])` · group: `1`")
+        st.json({
+            "config": {"pattern": "(MA\\d{7}-[A-Z])", "group": 1, "ignore_case": False},
+        })
+        st.success("Extracted → `MA0127232-D`")
+
+        st.markdown("**Example 2 — Extract date**")
+        st.markdown("Pattern: `(\\d{2}-\\d{2}-\\d{4})` · group: `1` · post_process: `date`")
+        st.json({
+            "config": {"pattern": "(\\d{2}-\\d{2}-\\d{4})", "group": 1},
+            "post_process": "date",
+        })
+        st.success("Extracted → `2008-09-08`")
+
+    with r2:
+        st.markdown("**Example 3 — Extract text after keyword**")
+        st.markdown("Pattern: `NAMA PERNIAGAAN[\\s:]+(.+)` · group: `1`")
+        st.json({
+            "config": {"pattern": "NAMA PERNIAGAAN[\\s:]+(.+)", "group": 1, "ignore_case": True},
+            "post_process": "trim",
+        })
+        st.success("Extracted → `DFG TELECOMMUNICATION SDN BHD`")
+
+        st.markdown("**Example 4 — Extract currency amount**")
+        st.markdown("Pattern: `MODAL BERBAYAR[\\s:]+RM\\s*([\\d,\\.]+)` · group: `1` · post_process: `number`")
+        st.json({
+            "config": {
+                "pattern": "MODAL BERBAYAR[\\s:]+RM\\s*([\\d,\\.]+)",
+                "group": 1,
+                "ignore_case": True,
+            },
+            "post_process": "number",
+        })
+        st.success("Extracted → `50000.0`")
+
 st.divider()
 
 # ── Post-process ──────────────────────────────────────────────────────────────
@@ -282,6 +420,51 @@ Applied **after** extraction to clean up the value.
 | `date` | Parse date string to ISO format | `08-09-2008` -> `2008-09-08` |
 | `strip_chars:X` | Strip specific characters from start/end | `strip_chars::` strips colons |
 """)
+
+with st.expander("Post-process: worked examples"):
+    st.markdown("Same raw extracted value `': DFG TELECOMMUNICATION SDN BHD '` — different post_process applied:")
+
+    pp1, pp2, pp3 = st.columns(3)
+    with pp1:
+        st.markdown("**`trim`**")
+        st.code(": DFG TELECOMMUNICATION SDN BHD ", language=None)
+        st.markdown("↓")
+        st.success("DFG TELECOMMUNICATION SDN BHD")
+
+    with pp2:
+        st.markdown("**`uppercase`**")
+        st.code(": dfg telecommunication sdn bhd", language=None)
+        st.markdown("↓")
+        st.success("DFG TELECOMMUNICATION SDN BHD")
+
+    with pp3:
+        st.markdown("**`lowercase`**")
+        st.code(": DFG TELECOMMUNICATION SDN BHD", language=None)
+        st.markdown("↓")
+        st.success("dfg telecommunication sdn bhd")
+
+    st.divider()
+
+    pp4, pp5, pp6 = st.columns(3)
+    with pp4:
+        st.markdown("**`number`**")
+        st.code("RM 1,234.50", language=None)
+        st.markdown("↓")
+        st.success("1234.5")
+
+    with pp5:
+        st.markdown("**`date`**")
+        st.code("08-09-2008", language=None)
+        st.markdown("↓")
+        st.success("2008-09-08")
+        st.caption("Also parses: `08/09/2008`, `08 Sep 2008`, `2008/09/08`")
+
+    with pp6:
+        st.markdown("**`strip_chars::`**")
+        st.code(":AKTIF:", language=None)
+        st.markdown("↓")
+        st.success("AKTIF")
+        st.caption("Strips only the specified char(s) from both ends.")
 
 st.divider()
 
