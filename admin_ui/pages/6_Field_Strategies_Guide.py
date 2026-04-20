@@ -68,16 +68,26 @@ with st.expander("Zone: worked example"):
     **Scenario:** Extract the registration number from an SSM certificate.
     The number always appears at the same position on every certificate.
 
-    **What OCR sees on the page (each line is a separate OCR result):**
+    **OCR lines on the page — zone drawn tightly around the number:**
     """)
-    st.code(
-        "Line @ y=228  bbox=(100,228,150,16)  text='NO. PENDAFTARAN'\n"
-        "Line @ y=244  bbox=(248,244,70,14)   text='MA0127232-D'\n"
-        "Line @ y=260  bbox=(100,260,200,16)  text='TARIKH PENDAFTARAN'",
-        language=None,
-    )
-    st.markdown("**Zone drawn:** `x=248, y=236, w=73, h=15`  ← tightly around the number line")
-    st.markdown("**Overlap check:** the `MA0127232-D` line bbox overlaps the zone by >30% → captured.")
+    st.markdown("""
+<div style="background:#1e1e2e;border:1px solid #444;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
+  <div style="position:relative;background:#111827;border:1px solid #374151;border-radius:4px;padding:0;height:108px;overflow:visible;">
+    <div style="position:absolute;top:10px;left:20px;color:#555;font-size:12px;">NO. PENDAFTARAN</div>
+    <div style="position:absolute;top:32px;left:106px;width:84px;height:38px;border:2px dashed #f59e0b;border-radius:3px;background:rgba(245,158,11,0.08);">
+      <div style="position:absolute;top:-16px;left:0;color:#f59e0b;font-size:10px;white-space:nowrap;">▶ zone (x=248, y=236, w=73, h=15)</div>
+    </div>
+    <div style="position:absolute;top:42px;left:108px;color:#4ade80;font-weight:bold;font-size:12px;background:rgba(74,222,128,0.12);padding:2px 8px;border-radius:2px;">MA0127232-D</div>
+    <div style="position:absolute;top:80px;left:20px;color:#555;font-size:12px;">TARIKH PENDAFTARAN</div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:#888;">
+    <span style="color:#f59e0b;">- -</span> zone boundary &nbsp;&nbsp;
+    <span style="color:#4ade80;">■</span> captured (overlaps zone ≥ 30%) &nbsp;&nbsp;
+    <span style="color:#555;">■</span> excluded
+  </div>
+</div>
+""", unsafe_allow_html=True)
+    st.markdown("**Overlap check:** the `MA0127232-D` bbox overlaps the zone by >30% → captured.")
     st.json({
         "name": "no_pendaftaran",
         "strategy": "zone",
@@ -193,19 +203,19 @@ with st.expander("Anchor: worked examples"):
     st.markdown("#### `same_line_colon`")
     st.markdown("**OCR returns one box containing the full line:**")
     st.markdown("""
-<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:14px 16px;font-family:monospace;font-size:13px;line-height:2;">
-  <div style="color:#aaa;">SIJIL PENDAFTARAN PERNIAGAAN</div>
-  <div style="border:1px solid #ccc;background:white;padding:4px 10px;border-radius:4px;display:inline-block;margin:2px 0;">
-    <span style="color:#b45309;font-weight:bold;">NAMA PERNIAGAAN</span>
-    <span style="color:#555;"> : </span>
-    <span style="color:#166534;font-weight:bold;">DFG TELECOMMUNICATION SDN BHD</span>
+<div style="background:#1e1e2e;border:1px solid #444;border-radius:6px;padding:14px 16px;font-family:monospace;font-size:13px;line-height:2.2;">
+  <div style="color:#666;">SIJIL PENDAFTARAN PERNIAGAAN</div>
+  <div style="border:1px solid #555;background:#2a2a3e;padding:4px 10px;border-radius:4px;display:inline-block;margin:2px 0;">
+    <span style="color:#f59e0b;font-weight:bold;">NAMA PERNIAGAAN</span>
+    <span style="color:#888;"> : </span>
+    <span style="color:#4ade80;font-weight:bold;">DFG TELECOMMUNICATION SDN BHD</span>
   </div>
-  <div style="color:#aaa;">NO. PENDAFTARAN : MA0127232-D</div>
-  <div style="color:#aaa;">TARIKH PENDAFTARAN : 08-09-2008</div>
-  <div style="color:#aaa;">STATUS : AKTIF</div>
-  <div style="margin-top:8px;font-size:11px;color:#666;">
-    <span style="color:#b45309;">■</span> anchor label &nbsp;&nbsp;
-    <span style="color:#166534;">■</span> extracted value
+  <div style="color:#666;">NO. PENDAFTARAN : MA0127232-D</div>
+  <div style="color:#666;">TARIKH PENDAFTARAN : 08-09-2008</div>
+  <div style="color:#666;">STATUS : AKTIF</div>
+  <div style="margin-top:8px;font-size:11px;color:#888;">
+    <span style="color:#f59e0b;">■</span> anchor label &nbsp;&nbsp;
+    <span style="color:#4ade80;">■</span> extracted value
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -223,18 +233,18 @@ with st.expander("Anchor: worked examples"):
     st.markdown("#### `right`")
     st.markdown("**OCR returns two separate boxes on the same row** (common in table-style layouts):")
     st.markdown("""
-<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
+<div style="background:#1e1e2e;border:1px solid #444;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-    <div style="border:2px solid #b45309;background:#fef3c7;padding:8px 14px;border-radius:4px;">
-      <div style="color:#92400e;font-size:10px;margin-bottom:2px;">anchor label</div>
-      <div>NAMA PERNIAGAAN</div>
+    <div style="border:2px solid #f59e0b;background:#2a2010;padding:8px 14px;border-radius:4px;">
+      <div style="color:#f59e0b;font-size:10px;margin-bottom:2px;">anchor label</div>
+      <div style="color:#fde68a;">NAMA PERNIAGAAN</div>
     </div>
     <div style="font-size:22px;color:#888;">→</div>
-    <div style="border:2px solid #166534;background:#dcfce7;padding:8px 14px;border-radius:4px;">
-      <div style="color:#14532d;font-size:10px;margin-bottom:2px;">extracted value</div>
-      <div>DFG TELECOMMUNICATION</div>
+    <div style="border:2px solid #4ade80;background:#0f2a1a;padding:8px 14px;border-radius:4px;">
+      <div style="color:#4ade80;font-size:10px;margin-bottom:2px;">extracted value</div>
+      <div style="color:#bbf7d0;">DFG TELECOMMUNICATION</div>
     </div>
-    <div style="color:#aaa;font-size:11px;align-self:flex-end;">≈ 110 px gap (within max_distance_px=300)</div>
+    <div style="color:#666;font-size:11px;align-self:flex-end;">≈ 110 px gap (within max_distance_px=300)</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -252,18 +262,18 @@ with st.expander("Anchor: worked examples"):
     st.markdown("#### `below`")
     st.markdown("**OCR returns each line as a separate box stacked vertically** (common in address blocks):")
     st.markdown("""
-<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
+<div style="background:#1e1e2e;border:1px solid #444;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
   <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
-    <div style="border:2px solid #b45309;background:#fef3c7;padding:8px 14px;border-radius:4px;">
-      <div style="color:#92400e;font-size:10px;margin-bottom:2px;">anchor label</div>
-      <div>ALAMAT BERDAFTAR</div>
+    <div style="border:2px solid #f59e0b;background:#2a2010;padding:8px 14px;border-radius:4px;">
+      <div style="color:#f59e0b;font-size:10px;margin-bottom:2px;">anchor label</div>
+      <div style="color:#fde68a;">ALAMAT BERDAFTAR</div>
     </div>
     <div style="font-size:20px;color:#888;margin-left:24px;">↓</div>
-    <div style="border:2px solid #166534;background:#dcfce7;padding:8px 14px;border-radius:4px;">
-      <div style="color:#14532d;font-size:10px;margin-bottom:2px;">extracted value (nearest below)</div>
-      <div>NO. 5, JALAN KENANGA 1/1</div>
+    <div style="border:2px solid #4ade80;background:#0f2a1a;padding:8px 14px;border-radius:4px;">
+      <div style="color:#4ade80;font-size:10px;margin-bottom:2px;">extracted value (nearest below)</div>
+      <div style="color:#bbf7d0;">NO. 5, JALAN KENANGA 1/1</div>
     </div>
-    <div style="border:1px dashed #ccc;background:#fafafa;padding:8px 14px;border-radius:4px;color:#999;">
+    <div style="border:1px dashed #444;background:#1a1a2a;padding:8px 14px;border-radius:4px;color:#555;">
       41200 KLANG, SELANGOR &nbsp;<em style="font-size:11px;">(further away — not captured)</em>
     </div>
   </div>
