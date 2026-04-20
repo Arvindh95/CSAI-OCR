@@ -232,7 +232,8 @@ with st.expander("How do I handle multi-page documents?"):
 with st.expander("What happens when a client hits the quota limit?"):
     st.markdown("""
     The API returns HTTP 429 with error code `quota_exceeded`.
-    The quota resets automatically at the start of the next billing period.
+    For `monthly` plans, quota resets automatically at the start of the next billing period.
+    For `lifetime` plans, quota never resets — you must raise the limit or it stays exhausted.
     To increase the limit, go to **Actions** → **Plan upsert** and raise **Max transactions**.
     """)
 

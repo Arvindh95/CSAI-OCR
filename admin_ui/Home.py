@@ -21,7 +21,7 @@ except httpx.HTTPError as e:
     st.stop()
 
 if not clients:
-    st.info("No clients found. Create one on the **Create Client** page.")
+    st.info("No clients found. Create one on the **Actions** page.")
     st.stop()
 
 st.metric("Total clients", len(clients))
