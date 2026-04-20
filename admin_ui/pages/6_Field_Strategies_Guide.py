@@ -191,15 +191,24 @@ with st.expander("Anchor: multiple labels (aliases)"):
 
 with st.expander("Anchor: worked examples"):
     st.markdown("#### `same_line_colon`")
-    st.markdown("**OCR text on the page (lines joined):**")
-    st.code(
-        "SIJIL PENDAFTARAN PERNIAGAAN\n"
-        "NAMA PERNIAGAAN : DFG TELECOMMUNICATION SDN BHD\n"
-        "NO. PENDAFTARAN : MA0127232-D\n"
-        "TARIKH PENDAFTARAN : 08-09-2008\n"
-        "STATUS : AKTIF",
-        language=None,
-    )
+    st.markdown("**OCR returns one box containing the full line:**")
+    st.markdown("""
+<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:14px 16px;font-family:monospace;font-size:13px;line-height:2;">
+  <div style="color:#aaa;">SIJIL PENDAFTARAN PERNIAGAAN</div>
+  <div style="border:1px solid #ccc;background:white;padding:4px 10px;border-radius:4px;display:inline-block;margin:2px 0;">
+    <span style="color:#b45309;font-weight:bold;">NAMA PERNIAGAAN</span>
+    <span style="color:#555;"> : </span>
+    <span style="color:#166534;font-weight:bold;">DFG TELECOMMUNICATION SDN BHD</span>
+  </div>
+  <div style="color:#aaa;">NO. PENDAFTARAN : MA0127232-D</div>
+  <div style="color:#aaa;">TARIKH PENDAFTARAN : 08-09-2008</div>
+  <div style="color:#aaa;">STATUS : AKTIF</div>
+  <div style="margin-top:8px;font-size:11px;color:#666;">
+    <span style="color:#b45309;">■</span> anchor label &nbsp;&nbsp;
+    <span style="color:#166534;">■</span> extracted value
+  </div>
+</div>
+""", unsafe_allow_html=True)
     st.json({
         "name": "nama_perniagaan",
         "strategy": "anchor",
@@ -212,12 +221,23 @@ with st.expander("Anchor: worked examples"):
     st.divider()
 
     st.markdown("#### `right`")
-    st.markdown("**OCR sees two separate boxes on the same row** (common in table-style layouts):")
-    st.code(
-        "Box A  bbox=(50,100,140,16)   text='NAMA PERNIAGAAN'\n"
-        "Box B  bbox=(250,100,220,16)  text='DFG TELECOMMUNICATION'",
-        language=None,
-    )
+    st.markdown("**OCR returns two separate boxes on the same row** (common in table-style layouts):")
+    st.markdown("""
+<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="border:2px solid #b45309;background:#fef3c7;padding:8px 14px;border-radius:4px;">
+      <div style="color:#92400e;font-size:10px;margin-bottom:2px;">anchor label</div>
+      <div>NAMA PERNIAGAAN</div>
+    </div>
+    <div style="font-size:22px;color:#888;">→</div>
+    <div style="border:2px solid #166534;background:#dcfce7;padding:8px 14px;border-radius:4px;">
+      <div style="color:#14532d;font-size:10px;margin-bottom:2px;">extracted value</div>
+      <div>DFG TELECOMMUNICATION</div>
+    </div>
+    <div style="color:#aaa;font-size:11px;align-self:flex-end;">≈ 110 px gap (within max_distance_px=300)</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
     st.json({
         "name": "nama_perniagaan",
         "strategy": "anchor",
@@ -230,13 +250,25 @@ with st.expander("Anchor: worked examples"):
     st.divider()
 
     st.markdown("#### `below`")
-    st.markdown("**OCR sees the label and value on separate lines** (common in address blocks):")
-    st.code(
-        "Line @ y=200  text='ALAMAT BERDAFTAR'\n"
-        "Line @ y=220  text='NO. 5, JALAN KENANGA 1/1'\n"
-        "Line @ y=238  text='41200 KLANG, SELANGOR'",
-        language=None,
-    )
+    st.markdown("**OCR returns each line as a separate box stacked vertically** (common in address blocks):")
+    st.markdown("""
+<div style="background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:16px;font-family:monospace;font-size:13px;">
+  <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+    <div style="border:2px solid #b45309;background:#fef3c7;padding:8px 14px;border-radius:4px;">
+      <div style="color:#92400e;font-size:10px;margin-bottom:2px;">anchor label</div>
+      <div>ALAMAT BERDAFTAR</div>
+    </div>
+    <div style="font-size:20px;color:#888;margin-left:24px;">↓</div>
+    <div style="border:2px solid #166534;background:#dcfce7;padding:8px 14px;border-radius:4px;">
+      <div style="color:#14532d;font-size:10px;margin-bottom:2px;">extracted value (nearest below)</div>
+      <div>NO. 5, JALAN KENANGA 1/1</div>
+    </div>
+    <div style="border:1px dashed #ccc;background:#fafafa;padding:8px 14px;border-radius:4px;color:#999;">
+      41200 KLANG, SELANGOR &nbsp;<em style="font-size:11px;">(further away — not captured)</em>
+    </div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
     st.json({
         "name": "alamat",
         "strategy": "anchor",
