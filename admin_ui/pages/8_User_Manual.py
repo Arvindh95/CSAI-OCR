@@ -117,7 +117,7 @@ with st.expander("Step 4 — Annotate fields", expanded=False):
     st.markdown("""
     Navigate to **Annotate** in the sidebar.
 
-    1. Select your template and page from the dropdowns.
+    1. Enter the **Template ID** in the number input at the top, then select the **Page** from the dropdown.
     2. Click **Load OCR lines (preview)** — this runs OCR on the sample image
        and overlays the detected text boxes.  Result is cached for the session.
     3. Add fields using one of three methods:
@@ -211,8 +211,8 @@ with st.expander("My Regex field returns the full match instead of just the valu
 with st.expander("The verify endpoint returns match: false even though the value looks correct."):
     st.markdown("""
     The comparison normalises both sides before comparing:
-    - Strips all whitespace, colons, hyphens, dots, commas
-    - Converts to uppercase
+    - Converts to **lowercase**
+    - Strips all whitespace, colons, hyphens, en/em-dashes, dots, commas, semicolons
 
     So `DFG TELECOMMUNICATION` == `dfg-telecommunication` == `DFG,TELECOMMUNICATION`.
 
@@ -233,7 +233,7 @@ with st.expander("What happens when a client hits the quota limit?"):
     st.markdown("""
     The API returns HTTP 429 with error code `quota_exceeded`.
     The quota resets automatically at the start of the next billing period.
-    To increase the limit, assign the client a higher-tier plan.
+    To increase the limit, go to **Actions** → **Plan upsert** and raise **Max transactions**.
     """)
 
 st.divider()
