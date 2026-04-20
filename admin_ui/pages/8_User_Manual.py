@@ -13,30 +13,23 @@ templates and handing off API credentials.
 # ── Concepts ──────────────────────────────────────────────────────────────────
 st.header("Key concepts")
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown("**Client**")
     st.markdown("""
     An organisation or system that consumes the OCR API.
-    Each client has an API key and belongs to a billing plan.
+    Each client has an API key and a quota plan (set at creation, editable anytime).
     """)
 
 with c2:
-    st.markdown("**Plan**")
-    st.markdown("""
-    Defines the transaction quota for a client (e.g. 1000 jobs/month).
-    Quota resets on the billing period start date.
-    """)
-
-with c3:
     st.markdown("**Template**")
     st.markdown("""
     A document type definition (e.g. `sijil_ssm`). Contains one or more
     fields, each with an extraction strategy and optional post-processing.
     """)
 
-with c4:
+with c3:
     st.markdown("**Field**")
     st.markdown("""
     A named value to extract from the document (e.g. `nama_perniagaan`).
@@ -50,15 +43,13 @@ st.header("End-to-end workflow")
 
 st.markdown("""
 ```
-1. Create a billing plan          (Actions page)
-2. Create a client                (Actions page)
-3. Assign plan to client          (Client Detail page)
-4. Create a document template     (Templates page)
-5. Upload sample image            (Templates page → template detail)
-6. Annotate fields                (Annotate page)
-7. Grant template to client       (Client Templates page)
-8. Hand off API key to client     (Client Detail page)
-9. Client integrates the API      (API Reference page)
+1. Create a client (plan settings included)   (Actions page)
+2. Create a document template                 (Templates page)
+3. Upload sample image                        (Templates page → template detail)
+4. Annotate fields                            (Annotate page)
+5. Grant template to client                   (Client Templates page)
+6. Hand off API key to client                 (shown once at creation)
+7. Client integrates the API                  (API Reference page)
 ```
 """)
 
@@ -68,47 +59,26 @@ st.divider()
 st.header("Step-by-step guide")
 
 # Step 1
-with st.expander("Step 1 — Create a billing plan", expanded=False):
+with st.expander("Step 1 — Create a client", expanded=False):
     st.markdown("""
     Navigate to **Actions** in the sidebar.
 
-    1. Under **Plans**, fill in:
-       - **Name** — e.g. `Standard`
-       - **Transaction limit** — number of OCR/verify jobs per billing period
-       - **Period days** — billing cycle length (e.g. `30`)
-    2. Click **Create Plan**.
+    Fill in the **Create client** form:
+    - **Name** — human-readable label (e.g. `Acme Corp`)
+    - **Email** — contact email for the client
+    - **Max transactions** — OCR/verify job quota per billing period
+    - **Max pages / txn** — maximum pages allowed per single job
+    - **Reset period** — `monthly` (resets each month) or `lifetime` (never resets)
 
-    The plan appears in the plans list.  You can create multiple plans
-    (e.g. Trial, Standard, Enterprise) and assign different clients to each.
+    Click **Create**.
+
+    The API key is shown **once** immediately after creation — copy it now.
+    The client's plan is set from these same fields; you can update it later
+    under **Plan upsert** on the same page.
     """)
 
 # Step 2
-with st.expander("Step 2 — Create a client", expanded=False):
-    st.markdown("""
-    Still on the **Actions** page.
-
-    1. Under **Clients**, fill in:
-       - **Client name** — human-readable label (e.g. `Acme Corp`)
-       - **Notes** — optional context
-    2. Click **Create Client**.
-
-    An API key is generated automatically.  You will see it in **Client Detail**.
-    """)
-
-# Step 3
-with st.expander("Step 3 — Assign a plan to the client", expanded=False):
-    st.markdown("""
-    Navigate to **Client Detail** and select your client from the dropdown.
-
-    1. Under **Assign Plan**, choose the plan from the dropdown.
-    2. Click **Assign**.
-
-    The client can now make API calls up to the plan's transaction limit.
-    Quota usage is visible on the same page.
-    """)
-
-# Step 4
-with st.expander("Step 4 — Create a document template", expanded=False):
+with st.expander("Step 2 — Create a document template", expanded=False):
     st.markdown("""
     Navigate to **Templates** in the sidebar.
 
@@ -122,8 +92,8 @@ with st.expander("Step 4 — Create a document template", expanded=False):
     The template starts with no fields.  You add fields in the Annotate page.
     """)
 
-# Step 5
-with st.expander("Step 5 — Upload a sample image", expanded=False):
+# Step 3
+with st.expander("Step 3 — Upload a sample image", expanded=False):
     st.markdown("""
     Still on the **Templates** page, open your template.
 
@@ -136,8 +106,8 @@ with st.expander("Step 5 — Upload a sample image", expanded=False):
     Multi-page documents: upload one image per page.  Page index starts at 0.
     """)
 
-# Step 6
-with st.expander("Step 6 — Annotate fields", expanded=False):
+# Step 4
+with st.expander("Step 4 — Annotate fields", expanded=False):
     st.markdown("""
     Navigate to **Annotate** in the sidebar.
 
@@ -169,8 +139,8 @@ with st.expander("Step 6 — Annotate fields", expanded=False):
     - Test extraction immediately using the **Test extraction** panel at the bottom.
     """)
 
-# Step 7
-with st.expander("Step 7 — Grant template to client", expanded=False):
+# Step 5
+with st.expander("Step 5 — Grant template to client", expanded=False):
     st.markdown("""
     Navigate to **Client Templates** in the sidebar.
 
@@ -182,19 +152,19 @@ with st.expander("Step 7 — Grant template to client", expanded=False):
     You can revoke access at any time by clicking **Revoke** on the granted template row.
     """)
 
-# Step 8
-with st.expander("Step 8 — Hand off API credentials", expanded=False):
+# Step 6
+with st.expander("Step 6 — Hand off API credentials", expanded=False):
     st.markdown("""
-    Navigate to **Client Detail** and select the client.
+    The API key was shown once when you created the client (Step 1).
 
-    The **API Key** is shown in the details panel.  Share this with the client
-    along with:
+    Share with the client:
+    - The API key
     - The base URL: `http://173.212.247.3`
     - The `doc_type_code` of the granted template(s)
     - A link to the **API Reference** page for integration examples
 
-    **Security note:** API keys are hashed in the database.  If a key is
-    compromised, rotate it via the **Actions** page (Regenerate Key).
+    **If the key was not saved:** rotate it via **Actions** → **Rotate API key**.
+    The new key is shown once immediately after rotation.
     """)
 
 st.divider()
