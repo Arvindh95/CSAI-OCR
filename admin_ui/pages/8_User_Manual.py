@@ -82,28 +82,34 @@ with st.expander("Step 2 — Create a document template", expanded=False):
     st.markdown("""
     Navigate to **Templates** in the sidebar.
 
-    1. Click **Create new template**.
+    1. Click the **Create** tab.
     2. Fill in:
        - **Name** — human-readable (e.g. `SSM Certificate`)
        - **Doc type code** — short identifier used in API calls (e.g. `sijil_ssm`).
-         Use lowercase letters, digits, and underscores only.
-    3. Click **Create**.
+         Allowed: lowercase letters, digits, underscores, hyphens.
+       - **Scope** — `global` (available to all clients) or `client-specific`
+    3. Optionally edit the pre-filled **fields** JSON, or leave it and edit later.
+    4. Click **Create**.
 
-    The template starts with no fields.  You add fields in the Annotate page.
+    Fields can be added or edited here (fields JSON textarea) or visually in the Annotate page.
     """)
 
 # Step 3
 with st.expander("Step 3 — Upload a sample image", expanded=False):
     st.markdown("""
-    Still on the **Templates** page, open your template.
+    Still on the **Templates** page, open your template (Browse tab → enter ID → Open).
 
-    1. Click **Upload page image**.
-    2. Select a representative sample scan (JPEG or PNG).
+    Under **Sample pages**:
+    1. Set **Page index** (0-based — first page = 0).
+    2. Upload a representative sample scan (JPEG or PNG).
        - Use a clean, high-resolution scan.
        - The image defines the coordinate space for Zone fields.
-    3. Click **Upload**.
+    3. Click **Upload page**.
 
-    Multi-page documents: upload one image per page.  Page index starts at 0.
+    Multi-page documents: repeat for each page, incrementing the page index.
+
+    You can also **Test extraction** here — upload a test document and click **Run test**
+    to see extracted fields without going through the API.
     """)
 
 # Step 4
@@ -122,21 +128,21 @@ with st.expander("Step 4 — Annotate fields", expanded=False):
     - Tune `min_overlap` if the wrong lines are captured.
     - Set field name and post-process, then click **Add zone field**.
 
-    **Anchor or Regex field (paste JSON):**
-    - Expand **Edit raw JSON**.
+    **Anchor or Regex field (edit raw JSON):**
+    - Scroll down to the **Edit raw JSON (optional)** textarea.
     - Add your field object to the JSON array.
-    - Click **Save JSON**.
+    - Click **Apply JSON to draft** to update the draft fields list.
     - See **Field Strategies Guide** for full JSON reference.
 
     4. Repeat for each field.
     5. Click **Save** when done.
-       - Choose **In-place** to overwrite the current version.
+       - Choose **In-place (overwrite)** to overwrite the current version.
        - Choose **New version** to keep the old version live while testing the new one.
 
     **Tips:**
-    - Click **✕** next to a field card to remove it.
-    - Drag-and-drop `display_order` to reorder fields in extraction output.
-    - Test extraction immediately using the **Test extraction** panel at the bottom.
+    - Click **✕** next to a field row to remove it from the draft.
+    - Change `display_order` (number input on the field form) to control output ordering.
+    - To test extraction without hitting the API, use the **Test extraction** section on the **Templates** page.
     """)
 
 # Step 5
@@ -144,8 +150,8 @@ with st.expander("Step 5 — Grant template to client", expanded=False):
     st.markdown("""
     Navigate to **Client Templates** in the sidebar.
 
-    1. Select the client from the dropdown.
-    2. Select the template from the **Grant template** dropdown.
+    1. Enter the **Client ID** in the number input at the top.
+    2. Under **Grant a template**, select the template from the dropdown.
     3. Click **Grant**.
 
     The client's API key can now use `doc_type=<doc_type_code>` in OCR/verify calls.
