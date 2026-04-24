@@ -8,21 +8,31 @@ os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 os.environ["FLAGS_use_mkldnn"] = "0"
 
 
+_ocr = None
+_ocr_no_unwarp = None
+
+
 def get_ocr():
-    from paddleocr import PaddleOCR
-    return PaddleOCR(lang="en", enable_mkldnn=False)
+    global _ocr
+    if _ocr is None:
+        from paddleocr import PaddleOCR
+        _ocr = PaddleOCR(lang="en", enable_mkldnn=False)
+    return _ocr
 
 
 def get_ocr_no_unwarp():
     """OCR engine without UVDoc unwarping — coords match original image."""
-    from paddleocr import PaddleOCR
-    return PaddleOCR(
-        lang="en",
-        enable_mkldnn=False,
-        use_doc_orientation_classify=False,
-        use_doc_unwarping=False,
-        use_textline_orientation=False,
-    )
+    global _ocr_no_unwarp
+    if _ocr_no_unwarp is None:
+        from paddleocr import PaddleOCR
+        _ocr_no_unwarp = PaddleOCR(
+            lang="en",
+            enable_mkldnn=False,
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+        )
+    return _ocr_no_unwarp
 
 
 def poly_to_xywh(poly) -> list[int]:
