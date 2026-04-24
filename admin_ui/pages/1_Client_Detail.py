@@ -33,13 +33,12 @@ c2.metric("Limit", usage["limit"])
 c3.metric("Remaining", usage["remaining"])
 st.caption(f"Period {usage['period_start'][:10]} → {usage['period_end'][:10]}")
 
-with st.expander("Plan", expanded=True):
-    st.json({
-        "max_transactions": plan["max_transactions"],
-        "max_pages_per_txn": plan["max_pages_per_txn"],
-        "reset_period": plan["reset_period"],
-        "effective_from": plan["effective_from"],
-    })
+st.subheader("Plan")
+p1, p2, p3, p4 = st.columns(4)
+p1.metric("Max transactions", f"{plan['max_transactions']:,}")
+p2.metric("Max pages / txn", plan["max_pages_per_txn"])
+p3.metric("Reset period", plan["reset_period"].capitalize())
+p4.metric("Effective from", plan["effective_from"][:10])
 
 st.subheader("Jobs")
 f1, f2 = st.columns([1, 4])
