@@ -1,7 +1,9 @@
 import os
 import re
+import sys
 
-os.environ.setdefault("PADDLE_PDX_CACHE_HOME", r"D:\docling\models\paddlex")
+if sys.platform == "win32":
+    os.environ.setdefault("PADDLE_PDX_CACHE_HOME", r"D:\docling\models\paddlex")
 os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 os.environ["FLAGS_use_mkldnn"] = "0"
 

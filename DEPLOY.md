@@ -76,8 +76,8 @@ sudo -u claudeuser -H /opt/ocr-saas/venv/bin/python -c \
 
 ```bash
 sudo -u postgres psql <<SQL
-CREATE ROLE csai_ocr WITH LOGIN PASSWORD 'CHANGE_ME';
-CREATE DATABASE csai_ocr OWNER csai_ocr;
+CREATE ROLE ocr_billing WITH LOGIN PASSWORD 'CHANGE_ME';
+CREATE DATABASE ocr_billing OWNER ocr_billing;
 SQL
 ```
 
@@ -86,9 +86,9 @@ Apply schema (two SQL migrations in `alembic/versions/`):
 ```bash
 sudo -u claudeuser -H bash <<'EOF'
 cd /opt/ocr-saas
-PGPASSWORD=CHANGE_ME psql -h 127.0.0.1 -U csai_ocr -d csai_ocr \
+PGPASSWORD=CHANGE_ME psql -h 127.0.0.1 -U ocr_billing -d ocr_billing \
     -f alembic/versions/001_billing_schema.sql
-PGPASSWORD=CHANGE_ME psql -h 127.0.0.1 -U csai_ocr -d csai_ocr \
+PGPASSWORD=CHANGE_ME psql -h 127.0.0.1 -U ocr_billing -d ocr_billing \
     -f alembic/versions/002_templates_schema.sql
 EOF
 ```
@@ -99,7 +99,7 @@ Create `/opt/ocr-saas/.env` (mode 600, owned by `claudeuser`):
 
 ```bash
 cat >/opt/ocr-saas/.env <<'EOF'
-DATABASE_URL=postgresql+asyncpg://csai_ocr:CHANGE_ME@127.0.0.1:5432/csai_ocr
+DATABASE_URL=postgresql+asyncpg://ocr_billing:CHANGE_ME@127.0.0.1:5432/ocr_billing
 REDIS_URL=redis://127.0.0.1:6379/0
 ADMIN_TOKEN=<generate: openssl rand -hex 32>
 API_KEY_PEPPER=<generate: openssl rand -hex 32>
@@ -173,7 +173,7 @@ systemctl restart fail2ban
 systemctl is-active ocr-api ocr-worker@1 ocr-ui nginx redis-server postgresql
 curl -sS http://127.0.0.1:8003/health                       # {"status":"ok"}
 curl -sS -H 'Host: <your.domain>' http://127.0.0.1/health   # {"status":"ok"}
-redis-cli llen rq:queue:csai-ocr                            # 0
+redis-cli llen rq:queue:csai-ocr                            # 0 (worker queue name)
 systemctl list-timers | grep ocr-                           # 3 timers scheduled
 ```
 
