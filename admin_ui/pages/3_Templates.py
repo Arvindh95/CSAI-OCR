@@ -48,10 +48,10 @@ with tab_list:
             for t in tmpls
         ]
         st.dataframe(rows, use_container_width=True, hide_index=True)
-        tid = st.number_input("Open template ID", min_value=1, step=1,
-                               value=tmpls[0]["id"])
+        options = {f"#{t['id']} — {t['name']}": t["id"] for t in tmpls}
+        label = st.selectbox("Open template", list(options.keys()))
         if st.button("Open", type="primary"):
-            st.session_state["selected_template_id"] = int(tid)
+            st.session_state["selected_template_id"] = options[label]
 
 with tab_create:
     with st.form("create_tpl"):
@@ -96,6 +96,13 @@ st.divider()
 st.header(f"Template #{sel}")
 try:
     tpl = get_template(int(sel))
+except httpx.HTTPStatusError as e:
+    if e.response.status_code == 404:
+        st.session_state.pop("selected_template_id", None)
+        st.warning(f"Template #{sel} no longer exists. Pick another above.")
+        st.stop()
+    st.error(_err(e))
+    st.stop()
 except Exception as e:
     st.error(_err(e))
     st.stop()
