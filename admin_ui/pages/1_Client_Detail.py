@@ -1,6 +1,6 @@
-import httpx
 import streamlit as st
 
+from admin_ui._errors import err_to_str
 from admin_ui._url_fix import fix_url
 from admin_ui.api import get_client, get_plan, get_usage, list_jobs
 
@@ -19,11 +19,8 @@ try:
     client = get_client(cid)
     plan = get_plan(cid)
     usage = get_usage(cid)
-except httpx.HTTPStatusError as e:
-    st.error(f"API {e.response.status_code}: {e.response.text}")
-    st.stop()
-except httpx.HTTPError as e:
-    st.error(f"API error: {e}")
+except Exception as e:
+    st.error(err_to_str(e))
     st.stop()
 
 status_badge = "✅ active" if client["is_active"] else "⛔ inactive"
@@ -51,8 +48,8 @@ with f1:
     filter_val = None if status_filter == "all" else status_filter
 try:
     jobs = list_jobs(cid, status=filter_val, limit=100)
-except httpx.HTTPError as e:
-    st.error(f"Jobs fetch failed: {e}")
+except Exception as e:
+    st.error(err_to_str(e))
     jobs = []
 
 if not jobs:

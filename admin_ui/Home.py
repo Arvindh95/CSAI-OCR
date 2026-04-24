@@ -1,6 +1,6 @@
-import httpx
 import streamlit as st
 
+from admin_ui._errors import err_to_str
 from admin_ui._url_fix import fix_url
 from admin_ui.api import list_clients
 
@@ -18,8 +18,8 @@ with col2:
 
 try:
     clients = list_clients(active_only=active_only)
-except httpx.HTTPError as e:
-    st.error(f"API error: {e}")
+except Exception as e:
+    st.error(err_to_str(e))
     st.stop()
 
 if not clients:
