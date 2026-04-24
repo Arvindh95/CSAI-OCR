@@ -6,18 +6,36 @@ import httpx
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 
+import base64
+import io as _io
+
 import streamlit.elements.image as _st_image
-if not hasattr(_st_image, "image_to_url"):
-    from streamlit.elements.lib.image_utils import image_to_url as _new_image_to_url
-    from streamlit.elements.lib.layout_utils import LayoutConfig as _LayoutConfig
 
-    def _image_to_url_shim(image, width, clamp, channels, output_format, image_id):
-        return _new_image_to_url(
-            image, _LayoutConfig(width=width),
-            clamp, channels, output_format, image_id,
-        )
 
-    _st_image.image_to_url = _image_to_url_shim
+def _image_to_data_url(image, width, clamp, channels, output_format, image_id):
+    """Return image as a base64 data URL so it lives in the DOM.
+
+    Bypasses Streamlit's MediaFileManager (which evicts /media/HASH.png
+    on every rerun, racing the browser fetch and leaving the canvas
+    with a half-rendered image).
+    """
+    if isinstance(image, (bytes, bytearray)):
+        data = bytes(image)
+        mime = "image/png"
+    else:
+        pil = image if isinstance(image, Image.Image) else Image.fromarray(image)
+        fmt = (output_format or "PNG").upper()
+        if fmt == "AUTO" or fmt == "JPG":
+            fmt = "PNG" if fmt == "AUTO" else "JPEG"
+        buf = _io.BytesIO()
+        pil.save(buf, format=fmt)
+        data = buf.getvalue()
+        mime = f"image/{fmt.lower()}"
+    b64 = base64.b64encode(data).decode("ascii")
+    return f"data:{mime};base64,{b64}"
+
+
+_st_image.image_to_url = _image_to_data_url
 
 from streamlit_drawable_canvas import st_canvas
 
