@@ -3,6 +3,8 @@ import json
 import httpx
 import streamlit as st
 
+from admin_ui._errors import err_to_str
+
 from admin_ui._url_fix import fix_url
 from admin_ui.api import (
     create_template,
@@ -19,13 +21,6 @@ st.set_page_config(page_title="Templates", layout="wide")
 fix_url()
 st.title("Templates")
 
-
-def _err(e: Exception) -> str:
-    if isinstance(e, httpx.HTTPStatusError):
-        return f"API {e.response.status_code}: {e.response.text}"
-    return f"API error: {e}"
-
-
 tab_list, tab_create = st.tabs(["Browse", "Create"])
 
 with tab_list:
@@ -36,7 +31,7 @@ with tab_list:
         tmpls = list_templates(active_only=active_only,
                                 doc_type_code=code_filter or None)
     except Exception as e:
-        st.error(_err(e))
+        st.error(err_to_str(e))
         st.stop()
     if not tmpls:
         st.info("No templates. Create one on the Create tab.")
@@ -88,7 +83,7 @@ with tab_create:
                     st.success(f"Created template #{t['id']} v{t['version']}")
                     st.session_state["selected_template_id"] = t["id"]
                 except Exception as e:
-                    st.error(_err(e))
+                    st.error(err_to_str(e))
 
 sel = st.session_state.get("selected_template_id")
 if not sel:
@@ -103,10 +98,10 @@ except httpx.HTTPStatusError as e:
         st.session_state.pop("selected_template_id", None)
         st.warning(f"Template #{sel} no longer exists. Pick another above.")
         st.stop()
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 except Exception as e:
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 
 scope = "global" if tpl["client_id"] is None else f"client #{tpl['client_id']}"
@@ -129,7 +124,7 @@ with e1:
                     delete_page(tpl["id"], p["page_index"])
                     st.rerun()
                 except Exception as e:
-                    st.error(_err(e))
+                    st.error(err_to_str(e))
     with st.form(f"upl-{tpl['id']}"):
         page_idx = st.number_input("Page index (0-based)",
                                      min_value=0, step=1, value=0)
@@ -144,7 +139,7 @@ with e1:
                     st.success("Uploaded.")
                     st.rerun()
                 except Exception as e:
-                    st.error(_err(e))
+                    st.error(err_to_str(e))
 
 with e2:
     st.subheader("Fields")
@@ -180,7 +175,7 @@ with e2:
                 st.session_state["selected_template_id"] = new["id"]
                 st.rerun()
             except Exception as e:
-                st.error(_err(e))
+                st.error(err_to_str(e))
     del_mode = c_del.radio(
         "Delete mode", ["Soft (deactivate)", "Hard (permanent)"],
         horizontal=False, key=f"dm-{tpl['id']}",
@@ -194,7 +189,7 @@ with e2:
             st.session_state.pop("selected_template_id", None)
             st.rerun()
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))
 
 st.divider()
 st.subheader("Test extraction")
@@ -215,4 +210,4 @@ if st.button("Run test", disabled=tfile is None):
                 with st.expander(f"Raw OCR lines ({len(res['lines'])})"):
                     st.json(res["lines"])
             except Exception as e:
-                st.error(_err(e))
+                st.error(err_to_str(e))

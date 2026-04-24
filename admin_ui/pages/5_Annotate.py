@@ -4,6 +4,8 @@ from pathlib import Path
 
 import httpx
 import streamlit as st
+
+from admin_ui._errors import err_to_str
 from PIL import Image, ImageDraw, ImageFont
 
 import streamlit.elements.image as _st_image
@@ -42,13 +44,6 @@ st.set_page_config(page_title="Annotate", layout="wide")
 fix_url()
 st.title("Annotate template zones")
 
-
-def _err(e: Exception) -> str:
-    if isinstance(e, httpx.HTTPStatusError):
-        return f"API {e.response.status_code}: {e.response.text}"
-    return f"API error: {e}"
-
-
 sel = st.session_state.get("selected_template_id")
 tid = st.number_input("Template ID", min_value=1, step=1,
                        value=int(sel) if sel else 1)
@@ -60,10 +55,10 @@ except httpx.HTTPStatusError as e:
     if e.response.status_code == 404:
         st.info(f"No template #{tid}. Enter a valid ID above.")
         st.stop()
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 except Exception as e:
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 
 st.caption(f"**{tpl['name']}** · `{tpl['doc_type_code']}` v{tpl['version']} · "
@@ -109,7 +104,7 @@ if c_fetch.button("Load OCR lines (preview)"):
         st.session_state[lines_key] = res.get("lines", [])
         st.success(f"Loaded {len(st.session_state[lines_key])} lines.")
     except Exception as e:
-        st.error(_err(e))
+        st.error(err_to_str(e))
 cached_lines = st.session_state.get(lines_key)
 if cached_lines is not None:
     c_status.caption(f"📄 {len(cached_lines)} OCR lines cached · "
@@ -355,4 +350,4 @@ if c_save.button("Save", type="primary"):
         st.session_state.pop(draft_key, None)
         st.rerun()
     except Exception as e:
-        st.error(_err(e))
+        st.error(err_to_str(e))

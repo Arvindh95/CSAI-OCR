@@ -1,6 +1,8 @@
 import httpx
 import streamlit as st
 
+from admin_ui._errors import err_to_str
+
 from admin_ui._url_fix import fix_url
 from admin_ui.api import (
     get_client,
@@ -14,13 +16,6 @@ st.set_page_config(page_title="Client Templates", layout="wide")
 fix_url()
 st.title("Client template whitelist")
 
-
-def _err(e: Exception) -> str:
-    if isinstance(e, httpx.HTTPStatusError):
-        return f"API {e.response.status_code}: {e.response.text}"
-    return f"API error: {e}"
-
-
 stored = st.session_state.get("selected_client_id")
 cid = st.number_input("Client ID", min_value=1, step=1,
                        value=int(stored) if stored else 1)
@@ -32,10 +27,10 @@ except httpx.HTTPStatusError as e:
     if e.response.status_code == 404:
         st.info(f"No client #{cid}. Enter a valid ID above.")
         st.stop()
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 except Exception as e:
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 
 st.caption(f"#{client['id']} · {client['name']} · {client['email']} · "
@@ -45,7 +40,7 @@ try:
     granted = list_client_templates(cid)
     all_tpls = list_templates(active_only=True)
 except Exception as e:
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 
 st.subheader("Currently granted")
@@ -62,7 +57,7 @@ else:
                 st.success("Revoked.")
                 st.rerun()
             except Exception as e:
-                st.error(_err(e))
+                st.error(err_to_str(e))
 
 st.divider()
 st.subheader("Grant a template")
@@ -81,4 +76,4 @@ else:
             st.success("Granted.")
             st.rerun()
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))

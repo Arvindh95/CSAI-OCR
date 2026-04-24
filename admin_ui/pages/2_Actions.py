@@ -1,6 +1,8 @@
 import httpx
 import streamlit as st
 
+from admin_ui._errors import err_to_str
+
 from admin_ui._url_fix import fix_url
 from admin_ui.api import (
     create_client,
@@ -16,13 +18,6 @@ from admin_ui.api import (
 st.set_page_config(page_title="Actions", layout="wide")
 fix_url()
 st.title("Actions")
-
-
-def _err(e: Exception) -> str:
-    if isinstance(e, httpx.HTTPStatusError):
-        return f"API {e.response.status_code}: {e.response.text}"
-    return f"API error: {e}"
-
 
 st.header("Create client")
 with st.form("create"):
@@ -45,7 +40,7 @@ with st.form("create"):
                 st.code(created["api_key"], language=None)
                 st.session_state["selected_client_id"] = created["id"]
             except Exception as e:
-                st.error(_err(e))
+                st.error(err_to_str(e))
 
 st.divider()
 
@@ -62,10 +57,10 @@ except httpx.HTTPStatusError as e:
     if e.response.status_code == 404:
         st.info(f"No client #{cid}. Create one above or enter a valid ID.")
     else:
-        st.error(_err(e))
+        st.error(err_to_str(e))
     st.stop()
 except Exception as e:
-    st.error(_err(e))
+    st.error(err_to_str(e))
     st.stop()
 
 st.caption(f"#{client['id']} · {client['name']} · {client['email']} · "
@@ -79,7 +74,7 @@ if st.button("Rotate key", disabled=not confirm_rot):
         st.success("Rotated. New key — shown once:")
         st.code(rr["api_key"], language=None)
     except Exception as e:
-        st.error(_err(e))
+        st.error(err_to_str(e))
 
 st.divider()
 
@@ -98,7 +93,7 @@ with st.form("plan"):
             st.success(f"Plan updated: {p['max_transactions']} tx, "
                        f"{p['max_pages_per_txn']} pp, {p['reset_period']}")
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))
 
 st.divider()
 
@@ -109,7 +104,7 @@ if st.button("Reset quota", disabled=not confirm_q):
         u = reset_quota(cid)
         st.success(f"Quota reset. used={u['used']} limit={u['limit']}")
     except Exception as e:
-        st.error(_err(e))
+        st.error(err_to_str(e))
 
 st.divider()
 
@@ -123,7 +118,7 @@ with st.form("edit"):
             patched = update_client(cid, name=new_name or None, email=new_email or None)
             st.success(f"Updated #{patched['id']}")
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))
 
 st.divider()
 
@@ -135,11 +130,11 @@ if client["is_active"]:
             d = deactivate_client(cid)
             st.success(f"Deactivated #{d['id']}. active={d['is_active']}")
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))
 else:
     if st.button("Reactivate"):
         try:
             r = update_client(cid, is_active=True)
             st.success(f"Reactivated #{r['id']}. active={r['is_active']}")
         except Exception as e:
-            st.error(_err(e))
+            st.error(err_to_str(e))
