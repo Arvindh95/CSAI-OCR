@@ -1,6 +1,9 @@
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
+
 st.set_page_config(page_title="Field Strategies Guide", layout="wide")
+fix_url()
 st.title("Field Extraction Strategies Guide")
 
 st.markdown("""

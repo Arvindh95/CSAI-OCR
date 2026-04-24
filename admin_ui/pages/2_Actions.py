@@ -1,6 +1,7 @@
 import httpx
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
 from admin_ui.api import (
     create_client,
     deactivate_client,
@@ -13,6 +14,7 @@ from admin_ui.api import (
 )
 
 st.set_page_config(page_title="Actions", layout="wide")
+fix_url()
 st.title("Actions")
 
 

@@ -1,6 +1,7 @@
 import httpx
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
 from admin_ui.api import (
     get_client,
     grant_template,
@@ -10,6 +11,7 @@ from admin_ui.api import (
 )
 
 st.set_page_config(page_title="Client Templates", layout="wide")
+fix_url()
 st.title("Client template whitelist")
 
 

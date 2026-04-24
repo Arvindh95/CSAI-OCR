@@ -1,6 +1,9 @@
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
+
 st.set_page_config(page_title="User Manual", layout="wide")
+fix_url()
 st.title("User Manual")
 
 st.markdown("""

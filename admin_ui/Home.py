@@ -1,9 +1,11 @@
 import httpx
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
 from admin_ui.api import list_clients
 
 st.set_page_config(page_title="CSAI-OCR Admin", page_icon="🔐", layout="wide")
+fix_url()
 st.title("CSAI-OCR Admin")
 st.caption("Client management dashboard")
 

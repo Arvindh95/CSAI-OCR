@@ -1,9 +1,11 @@
 import httpx
 import streamlit as st
 
+from admin_ui._url_fix import fix_url
 from admin_ui.api import get_client, get_plan, get_usage, list_jobs
 
 st.set_page_config(page_title="Client Detail", layout="wide")
+fix_url()
 
 cid = st.session_state.get("selected_client_id")
 if not cid:

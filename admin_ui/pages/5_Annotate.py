@@ -21,6 +21,7 @@ if not hasattr(_st_image, "image_to_url"):
 
 from streamlit_drawable_canvas import st_canvas
 
+from admin_ui._url_fix import fix_url
 from admin_ui.api import get_page_lines, get_template, update_template
 
 
@@ -38,6 +39,7 @@ def _overlap_ratio(line_bbox, zone):
     return inter / line_area
 
 st.set_page_config(page_title="Annotate", layout="wide")
+fix_url()
 st.title("Annotate template zones")
 
 
