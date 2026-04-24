@@ -5,6 +5,9 @@ After=network.target
 [Service]
 User=claudeuser
 WorkingDirectory=/opt/ocr-saas
+Environment=PYTHONPATH=/opt/ocr-saas
+Environment=HOME=/opt/ocr-saas
+EnvironmentFile=/opt/ocr-saas/.env
 ExecStart=/opt/ocr-saas/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8003 --workers 1 --log-config /opt/ocr-saas/config/logging.json
 Restart=always
 RestartSec=5
