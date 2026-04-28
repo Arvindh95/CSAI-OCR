@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from PIL import Image
-from sqlalchemy import delete as sa_delete, select, update as sa_update
+from sqlalchemy import delete as sa_delete, or_, select, update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,6 +130,7 @@ async def list_templates(
     active_only: bool = False,
     doc_type_code: str | None = Query(default=None),
     client_id: int | None = Query(default=None),
+    q: str | None = Query(default=None, description="search across id, name, doc_type_code"),
     session: AsyncSession = Depends(get_session),
 ):
     stmt = select(DocTemplate).order_by(DocTemplate.id.desc())
@@ -139,6 +140,17 @@ async def list_templates(
         stmt = stmt.where(DocTemplate.doc_type_code == doc_type_code)
     if client_id is not None:
         stmt = stmt.where(DocTemplate.client_id == client_id)
+    if q:
+        term = q.strip()
+        if term:
+            like = f"%{term}%"
+            conds = [
+                DocTemplate.name.ilike(like),
+                DocTemplate.doc_type_code.ilike(like),
+            ]
+            if term.isdigit():
+                conds.append(DocTemplate.id == int(term))
+            stmt = stmt.where(or_(*conds))
     r = await session.execute(stmt)
     return [
         {"id": t.id, "client_id": t.client_id, "name": t.name,

@@ -16,9 +16,29 @@ def fix_url() -> None:
 <script>
 try {
   const w = window.parent || window;
-  const p = w.location.pathname;
-  const m = p.match(/^\\/([^/]+)(?:\\/\\1)+\\/?$/);
-  if (m) { w.history.replaceState(null, '', '/' + m[1] + w.location.search + w.location.hash); }
+  const RE = /^\\/([^/]+)(?:\\/\\1)+\\/?$/;
+  const clean = () => {
+    try {
+      const p = w.location.pathname;
+      const m = p.match(RE);
+      if (m) {
+        w.history.replaceState(null, '',
+          '/' + m[1] + w.location.search + w.location.hash);
+      }
+    } catch (e) {}
+  };
+  if (!w.__csaiUrlFixInstalled) {
+    const wrap = (fn) => function () {
+      const r = fn.apply(this, arguments);
+      clean();
+      return r;
+    };
+    w.history.pushState = wrap(w.history.pushState);
+    w.history.replaceState = wrap(w.history.replaceState);
+    w.addEventListener('popstate', clean);
+    w.__csaiUrlFixInstalled = true;
+  }
+  clean();
 } catch (e) {}
 </script>
 """,

@@ -26,10 +26,13 @@ tab_list, tab_create = st.tabs(["Browse", "Create"])
 with tab_list:
     c1, c2 = st.columns([1, 4])
     active_only = c1.checkbox("Active only", value=True)
-    code_filter = c2.text_input("Filter by doc_type_code (optional)")
+    search = c2.text_input(
+        "Search (ID, name, or doc_type_code)",
+        placeholder="e.g. ssm, sijil, 54",
+    )
     try:
         tmpls = list_templates(active_only=active_only,
-                                doc_type_code=code_filter or None)
+                                q=search or None)
     except Exception as e:
         st.error(err_to_str(e))
         st.stop()

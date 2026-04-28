@@ -105,13 +105,16 @@ def list_jobs(client_id: int, status: str | None = None,
 
 def list_templates(active_only: bool = False,
                    doc_type_code: str | None = None,
-                   client_id: int | None = None) -> list[dict]:
+                   client_id: int | None = None,
+                   q: str | None = None) -> list[dict]:
     with _c() as c:
         params: dict = {"active_only": active_only}
         if doc_type_code:
             params["doc_type_code"] = doc_type_code
         if client_id is not None:
             params["client_id"] = client_id
+        if q:
+            params["q"] = q
         r = c.get("/admin/v1/templates", params=params)
         r.raise_for_status()
         return r.json()
