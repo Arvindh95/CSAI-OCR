@@ -1,3 +1,4 @@
+import ipaddress
 import json as _json
 import os
 from pathlib import Path
@@ -7,8 +8,8 @@ from fastapi import APIRouter, Depends, File, Form, Header, Request, UploadFile
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.billing.idempotency import check_and_store
-from app.billing.jobs import create_job, get_job
+from app.billing.idempotency import check_and_store, discard as discard_idem
+from app.billing.jobs import create_job, get_job, mark_failed
 from app.billing.models import Client
 from app.billing.periods import current_plan, get_or_create_open_period
 from app.billing.quota import release, reserve
@@ -28,6 +29,21 @@ _MIME_EXT = {
     "image/jpeg": ".jpg", "image/png": ".png",
     "image/tiff": ".tif", "application/pdf": ".pdf",
 }
+
+
+def _client_ip(request: Request) -> str | None:
+    real = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for")
+    if real:
+        candidate = real.split(",")[0].strip()
+    elif request.client:
+        candidate = request.client.host
+    else:
+        return None
+    try:
+        ipaddress.ip_address(candidate)
+        return candidate
+    except ValueError:
+        return None
 
 
 @router.post("/verify", status_code=202)
@@ -82,8 +98,11 @@ async def submit_verify(
 
     if not await reserve(redis, client.id, period.id, limit=plan.max_transactions):
         quota_denies_total.inc()
+        if idempotency_key:
+            await discard_idem(redis, client.id, idempotency_key, job_id)
         raise QuotaExceeded(f"plan limit {plan.max_transactions} reached this period")
 
+    storage_path = STORAGE_DIR / f"{job_id}{_MIME_EXT[mime]}"
     try:
         await create_job(
             session, client.id, period.id, endpoint="/api/v1/verify",
@@ -93,23 +112,44 @@ async def submit_verify(
                 "doc_type": doc_type,
                 "expected_fields": expected,
             },
-            ip_address=request.client.host if request.client else None,
+            ip_address=_client_ip(request),
             job_id=job_id,
             template_id=template.id,
             template_version=template.version,
         )
-        storage_path = STORAGE_DIR / f"{job_id}{_MIME_EXT[mime]}"
         storage_path.write_bytes(data)
         await session.commit()
     except Exception:
         await session.rollback()
         await release(redis, client.id, period.id)
+        try:
+            storage_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if idempotency_key:
+            await discard_idem(redis, client.id, idempotency_key, job_id)
         raise
 
-    enqueue_ocr_job(
-        job_id, "/api/v1/verify", str(storage_path), client.id, period.id,
-        template_id=template.id,
-    )
+    try:
+        enqueue_ocr_job(
+            job_id, "/api/v1/verify", str(storage_path), client.id, period.id,
+            template_id=template.id,
+        )
+    except Exception:
+        try:
+            await mark_failed(session, job_id, "enqueue failed")
+            await session.commit()
+        except Exception:
+            await session.rollback()
+        await release(redis, client.id, period.id)
+        try:
+            storage_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if idempotency_key:
+            await discard_idem(redis, client.id, idempotency_key, job_id)
+        raise
+
     jobs_submitted_total.labels(
         template=(doc_type or "none"), mime=mime,
     ).inc()

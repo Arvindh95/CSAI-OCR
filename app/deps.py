@@ -34,5 +34,7 @@ async def current_client(
     client = await authenticate(session, x_api_key)
     if client is None:
         raise AuthError("invalid api key")
+    if not client.is_active:
+        raise AuthError("client account is inactive")
     request.state.client_id = client.id
     return client

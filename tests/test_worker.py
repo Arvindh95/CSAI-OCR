@@ -62,7 +62,7 @@ async def test_worker_success_path(Session, seeded, monkeypatch, tmp_path):
         job = await create_job(sess, cid, pid, endpoint="/ocr")
         await sess.commit()
         jid = job.id
-    await worker._process(jid, str(fake_file), cid, pid)
+    await worker._process(jid, "/ocr", str(fake_file), cid, pid)
     async with Session() as sess:
         fetched = await get_job(sess, cid, jid)
         assert fetched.status == "done"
@@ -85,7 +85,7 @@ async def test_worker_failure_path(Session, seeded, monkeypatch, tmp_path):
         job = await create_job(sess, cid, pid, endpoint="/ocr")
         await sess.commit()
         jid = job.id
-    await worker._process(jid, str(fake_file), cid, pid)
+    await worker._process(jid, "/ocr", str(fake_file), cid, pid)
     async with Session() as sess:
         fetched = await get_job(sess, cid, jid)
         assert fetched.status == "failed"
@@ -127,7 +127,7 @@ async def test_worker_applies_template(Session, seeded, monkeypatch, tmp_path):
                                 template_id=tid, template_version=1)
         await sess.commit()
         jid = job.id
-    await worker._process(jid, str(fake_file), cid, pid, template_id=tid)
+    await worker._process(jid, "/ocr", str(fake_file), cid, pid, template_id=tid)
     async with Session() as sess:
         fetched = await get_job(sess, cid, jid)
         assert fetched.status == "done"

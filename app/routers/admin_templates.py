@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import os
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from PIL import Image
@@ -267,21 +270,37 @@ async def delete_template(
         pages = (await session.execute(
             select(TemplatePage).where(TemplatePage.template_id == t.id)
         )).scalars().all()
+        to_delete: list[Path] = []
+        skipped: list[str] = []
         for p in pages:
             try:
                 path = Path(p.image_path).resolve()
-                if own_dir in path.parents:
-                    path.unlink(missing_ok=True)
-            except Exception:
-                pass
+            except (OSError, ValueError) as exc:
+                skipped.append(f"{p.image_path}: {exc}")
+                continue
+            if own_dir not in path.parents:
+                skipped.append(f"{path}: outside template dir")
+                continue
+            to_delete.append(path)
+        orphaned: list[str] = []
+        for path in to_delete:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as exc:
+                orphaned.append(f"{path}: {exc}")
+        if skipped or orphaned:
+            logger.warning(
+                "template %s hard-delete: skipped=%s orphaned=%s",
+                t.id, skipped, orphaned,
+            )
         await session.execute(
             sa_delete(TemplatePage).where(TemplatePage.template_id == t.id)
         )
         try:
             if own_dir.exists() and not any(own_dir.iterdir()):
                 own_dir.rmdir()
-        except Exception:
-            pass
+        except OSError as exc:
+            logger.warning("template %s dir cleanup failed: %s", t.id, exc)
         await session.delete(t)
         await session.commit()
         return snapshot

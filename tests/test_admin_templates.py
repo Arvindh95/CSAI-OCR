@@ -141,7 +141,7 @@ async def test_delete_soft(cleanup_templates):
 async def test_upload_page_image(cleanup_templates, tmp_path):
     from PIL import Image
     img_path = tmp_path / "sample.png"
-    Image.new("RGB", (640, 480), "white").save(img_path, format="PNG")
+    Image.new("RGB", (1600, 1200), "white").save(img_path, format="PNG")
     with TestClient(app) as c:
         cr = c.post("/admin/v1/templates", json={
             "name": "p", "doc_type_code": "tpl-test-pg", "fields": []})
@@ -155,8 +155,8 @@ async def test_upload_page_image(cleanup_templates, tmp_path):
         assert up.status_code == 200, up.text
         pg = up.json()
         assert pg["page_index"] == 0
-        assert pg["image_width"] == 640
-        assert pg["image_height"] == 480
+        assert pg["image_width"] == 1600
+        assert pg["image_height"] == 1200
         detail = c.get(f"/admin/v1/templates/{tid}").json()
         assert len(detail["pages"]) == 1
         dr = c.delete(f"/admin/v1/templates/{tid}/pages/0")

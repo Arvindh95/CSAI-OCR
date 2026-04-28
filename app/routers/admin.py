@@ -152,11 +152,10 @@ async def upsert_plan(
     if c is None:
         raise NotFound(f"client {client_id} not found")
     now = datetime.now(timezone.utc)
-    result = await session.execute(
+    open_plans = (await session.execute(
         select(Plan).where(Plan.client_id == client_id, Plan.effective_to.is_(None))
-    )
-    old = result.scalar_one_or_none()
-    if old is not None:
+    )).scalars().all()
+    for old in open_plans:
         old.effective_to = now
     new = Plan(
         client_id=client_id,

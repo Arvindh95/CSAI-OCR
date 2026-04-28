@@ -1,5 +1,17 @@
 from redis.asyncio import Redis
 
+_RESERVE_LUA = """
+local n = redis.call('INCR', KEYS[1])
+if n == 1 then
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[2]))
+end
+if n > tonumber(ARGV[1]) then
+  redis.call('DECR', KEYS[1])
+  return 0
+end
+return 1
+"""
+
 
 def quota_key(client_id: int, period_id: int) -> str:
     return f"quota:{client_id}:{period_id}"
@@ -7,13 +19,8 @@ def quota_key(client_id: int, period_id: int) -> str:
 
 async def reserve(r: Redis, client_id: int, period_id: int, limit: int, ttl: int = 2678400) -> bool:
     key = quota_key(client_id, period_id)
-    new_count = await r.incr(key)
-    if new_count == 1:
-        await r.expire(key, ttl)
-    if new_count > limit:
-        await r.decr(key)
-        return False
-    return True
+    result = await r.eval(_RESERVE_LUA, 1, key, limit, ttl)
+    return int(result) == 1
 
 
 async def release(r: Redis, client_id: int, period_id: int) -> int:
