@@ -16,14 +16,30 @@ def fix_url() -> None:
 <script>
 try {
   const w = window.parent || window;
-  const RE = /^\\/([^/]+)(?:\\/\\1)+\\/?$/;
+  const PAGES = new Set([
+    'Client_Detail', 'Actions', 'Templates', 'Client_Templates',
+    'Annotate', 'Field_Strategies_Guide', 'API_Reference', 'User_Manual'
+  ]);
   const clean = () => {
     try {
       const p = w.location.pathname;
-      const m = p.match(RE);
-      if (m) {
+      const segs = p.split('/').filter(Boolean);
+      if (segs.length < 2) return;
+      // Walk from the right; the last segment that names a known page
+      // is the user's intended destination. Anything before it is
+      // accumulated junk from Streamlit's relative-href navigation.
+      let target = null;
+      for (let i = segs.length - 1; i >= 0; i--) {
+        if (PAGES.has(segs[i])) { target = segs[i]; break; }
+      }
+      // Also handle the legacy /X/X(/X...)? compounding case.
+      if (!target) {
+        const allSame = segs.every(s => s === segs[0]);
+        if (allSame) target = segs[0];
+      }
+      if (target && p !== '/' + target) {
         w.history.replaceState(null, '',
-          '/' + m[1] + w.location.search + w.location.hash);
+          '/' + target + w.location.search + w.location.hash);
       }
     } catch (e) {}
   };
