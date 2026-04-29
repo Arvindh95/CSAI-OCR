@@ -22,7 +22,7 @@ from app.metrics import (
 )
 from app.queue import enqueue_ocr_job
 from app.templates.resolver import resolve_for_client
-from app.upload import validate_upload
+from app.upload import parse_page_indexes, validate_upload
 
 STORAGE_DIR = Path(os.environ.get("OCR_STORAGE_DIR", "/opt/ocr-saas/storage"))
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,6 +55,13 @@ async def submit_ocr(
     file: UploadFile | None = File(default=None),
     files: list[UploadFile] = File(default=[]),
     doc_type: str | None = Form(default=None),
+    page_indexes: str | None = Form(
+        default=None,
+        description='Optional JSON array mapping each uploaded file to its '
+                    'logical page index, e.g. "[1,0,2]". Length must equal '
+                    'file count; values must be unique non-negative ints. '
+                    'Defaults to upload order ([0,1,...]).',
+    ),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     client: Client = Depends(current_client),
     session: AsyncSession = Depends(get_session),
@@ -86,6 +93,7 @@ async def submit_ocr(
         per_file_hashes.append(fhash)
     pages = len(file_records)
     body_hash = hashlib.sha256(b"".join(per_file_hashes)).digest()
+    page_idx_list = parse_page_indexes(page_indexes, pages)
 
     template = None
     if doc_type:
@@ -137,6 +145,7 @@ async def submit_ocr(
                 "storage_paths": [str(p) for p in storage_paths],
                 "filenames": [r["filename"] for r in file_records],
                 "mimes": [r["mime"] for r in file_records],
+                "page_indexes": page_idx_list,
             },
             ip_address=_client_ip(request),
             job_id=job_id,

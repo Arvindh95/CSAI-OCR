@@ -19,7 +19,7 @@ from app.errors import BadRequest, IdempotencyConflict, NotFound, QuotaExceeded
 from app.metrics import idempotency_conflicts_total, jobs_submitted_total, quota_denies_total
 from app.queue import enqueue_ocr_job
 from app.templates.resolver import resolve_for_client
-from app.upload import validate_upload
+from app.upload import parse_page_indexes, validate_upload
 
 STORAGE_DIR = Path(os.environ.get("OCR_STORAGE_DIR", "/opt/ocr-saas/storage"))
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,6 +55,11 @@ async def submit_verify(
     expected_fields: str = Form(...,
         description='JSON object of field_name:expected_value pairs, '
                     'e.g. {"nama_perniagaan":"SERI WARISAN","no_pendaftaran":"001955364-H"}'),
+    page_indexes: str | None = Form(
+        default=None,
+        description='Optional JSON array mapping each uploaded file to its '
+                    'logical page index. Defaults to upload order.',
+    ),
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     client: Client = Depends(current_client),
     session: AsyncSession = Depends(get_session),
@@ -93,6 +98,7 @@ async def submit_verify(
         per_file_hashes.append(fhash)
     pages = len(file_records)
     body_hash = hashlib.sha256(b"".join(per_file_hashes)).digest()
+    page_idx_list = parse_page_indexes(page_indexes, pages)
 
     template = await resolve_for_client(session, client.id, doc_type)
 
@@ -143,6 +149,7 @@ async def submit_verify(
                 "storage_paths": [str(p) for p in storage_paths],
                 "filenames": [r["filename"] for r in file_records],
                 "mimes": [r["mime"] for r in file_records],
+                "page_indexes": page_idx_list,
             },
             ip_address=_client_ip(request),
             job_id=job_id,

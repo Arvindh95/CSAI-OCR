@@ -1,4 +1,5 @@
 import hashlib
+import json as _json
 
 import magic
 
@@ -28,3 +29,32 @@ def validate_upload(data: bytes, max_pages: int = 1) -> tuple[str, int, bytes]:
         )
     body_hash = hashlib.sha256(data).digest()
     return mime, pages, body_hash
+
+
+def parse_page_indexes(raw: str | None, n_files: int) -> list[int]:
+    """Validate the optional page_indexes form field.
+
+    Default (raw is None / empty) = list(range(n_files)) — i.e. upload
+    order. When provided, must be a JSON array of unique non-negative
+    integers, exactly n_files long.
+    """
+    if not raw:
+        return list(range(n_files))
+    try:
+        parsed = _json.loads(raw)
+    except _json.JSONDecodeError as e:
+        raise BadRequest(f"page_indexes is not valid JSON: {e}")
+    if not isinstance(parsed, list):
+        raise BadRequest("page_indexes must be a JSON array")
+    if len(parsed) != n_files:
+        raise BadRequest(
+            f"page_indexes length {len(parsed)} != file count {n_files}",
+            detail={"page_indexes_len": len(parsed), "file_count": n_files},
+        )
+    if not all(isinstance(x, int) and not isinstance(x, bool) for x in parsed):
+        raise BadRequest("page_indexes must contain only integers")
+    if any(x < 0 for x in parsed):
+        raise BadRequest("page_indexes must be >= 0")
+    if len(set(parsed)) != len(parsed):
+        raise BadRequest("page_indexes must be unique (no duplicates)")
+    return parsed

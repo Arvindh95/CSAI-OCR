@@ -27,11 +27,12 @@ Submit a document for OCR processing. Returns a job ID immediately (async/queued
 | `file` | file | One of `file` / `files` | Single-page request — Image (JPEG/PNG/TIFF) |
 | `files` | file (repeated) | One of `file` / `files` | Multi-page request — repeat the field once per page (`-F files=@p0.png -F files=@p1.png ...`). Total pages must be ≤ plan's `max_pages_per_txn`. |
 | `doc_type` | string | No | Template `doc_type_code` for structured extraction |
+| `page_indexes` | string (JSON) | No | JSON array mapping each uploaded file to its logical page index, e.g. `"[1,0,2]"`. Length must equal file count; values must be unique non-negative ints. Defaults to upload order (`[0,1,...]`). |
 | `Idempotency-Key` | header | No | Prevent duplicate submissions |
 
-> **Pages match by upload order.** First `files` upload becomes `page_index=0`,
-> second becomes `page_index=1`, etc. Templates with multiple sample pages
-> resize each upload to the matching page's dimensions before OCR.
+> **Page tagging:** by default each `files` upload is tagged with its
+> upload-order index — first becomes `page_index=0`, second `page_index=1`.
+> Send `page_indexes` to override when uploads are not in document order.
 """)
 
 with st.expander("OCR: single-page request"):
@@ -56,6 +57,32 @@ curl -X POST https://your-server.example.com/api/v1/ocr \\
     st.caption("Counts as **1** transaction against `max_transactions`. "
                "Counts as **3 pages** against `max_pages_per_txn` "
                "(must be ≤ plan limit, otherwise 400).")
+
+with st.expander("OCR: multi-page with explicit page indexes"):
+    st.markdown("Use `page_indexes` when uploads are not in document order:")
+    st.code("""
+curl -X POST https://your-server.example.com/api/v1/ocr \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -F "files=@scan_b.png"  \\
+  -F "files=@scan_a.png"  \\
+  -F "files=@scan_c.png"  \\
+  -F "page_indexes=[1,0,2]" \\
+  -F "doc_type=sijil_ssm"
+""", language="bash")
+    st.markdown("""
+    With this body:
+    - `scan_b.png` is tagged as `page_index=1`
+    - `scan_a.png` is tagged as `page_index=0`
+    - `scan_c.png` is tagged as `page_index=2`
+
+    A field with template `page_index=0` reads `scan_a.png`'s OCR lines.
+
+    **Rules:**
+    - Length must equal the number of `files` uploaded
+    - Values must be unique non-negative integers
+    - Sparse allowed (e.g. `[0,2,5]`); fields targeting absent pages return null
+    - Omit the field entirely to use upload order (`[0,1,...]`)
+    """)
 
     st.markdown("**Response (202 Accepted):**")
     st.json({"job_id": "4ec0eecc-214e-4bc0-86b0-e7b5c4447c88", "status": "queued"})

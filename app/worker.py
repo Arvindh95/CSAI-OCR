@@ -92,8 +92,10 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
             async with Session() as s:
                 template_dict = await load_template_dict(s, template_id)
 
-        # Load input_meta: storage_paths list (multi-page) + verify expected_fields
+        # Load input_meta: storage_paths list (multi-page),
+        # page_indexes mapping, verify expected_fields.
         storage_paths: list[str] = [storage_path]
+        page_idx_list: list[int] | None = None
         expected_fields = None
         async with Session() as s:
             from sqlalchemy import select
@@ -103,16 +105,20 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
             if row:
                 if row.get("storage_paths"):
                     storage_paths = list(row["storage_paths"])
+                if row.get("page_indexes"):
+                    page_idx_list = list(row["page_indexes"])
                 if endpoint == "/api/v1/verify":
                     expected_fields = row.get("expected_fields")
+        if page_idx_list is None or len(page_idx_list) != len(storage_paths):
+            page_idx_list = list(range(len(storage_paths)))
 
-        # Resize each uploaded page to match template page dims so OCR
-        # coords align with annotated zone coordinates.
+        # Resize each uploaded page to match its declared template page
+        # dims so OCR coords align with annotated zone coordinates.
         if template_dict is not None:
             _pages = template_dict.get("pages", [])
             _pages_by_idx = {p["page_index"]: p for p in _pages}
-            for i, sp in enumerate(storage_paths):
-                target = _pages_by_idx.get(i)
+            for sp, pi in zip(storage_paths, page_idx_list):
+                target = _pages_by_idx.get(pi)
                 if not target:
                     continue
                 try:
@@ -128,12 +134,12 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
 
         try:
             lines = []
-            for i, sp in enumerate(storage_paths):
+            for sp, pi in zip(storage_paths, page_idx_list):
                 page_lines = await asyncio.get_event_loop().run_in_executor(
                     None, _run_paddle, sp
                 )
                 for ln in page_lines:
-                    ln["page_index"] = i
+                    ln["page_index"] = pi
                 lines.extend(page_lines)
             if template_dict is not None:
                 fields = extract_with_template(lines, template_dict)
