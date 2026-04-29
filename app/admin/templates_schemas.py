@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 class FieldDef(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     page_index: int = Field(default=0, ge=0)
-    strategy: str = Field(pattern="^(anchor|zone|regex)$")
+    strategy: str = Field(pattern="^(anchor|zone|regex|between)$")
     config: dict[str, Any]
     post_process: str | None = None
     required: bool = False
