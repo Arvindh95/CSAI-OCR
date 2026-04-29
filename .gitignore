@@ -61,3 +61,6 @@ OCR App Startup.md
 # Sample docs (kept locally only)
 Sijil_*.png
 Sijil_*.jpg
+
+# Local-only infra notes (contains internal layout)
+SERVER.md
