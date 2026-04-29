@@ -10,7 +10,7 @@ st.markdown("""
 All API endpoints require an **`X-API-Key`** header for authentication.
 The client must have an active plan and the relevant template must be granted.
 
-Base URL: `http://173.212.247.3`
+Base URL: `https://your-server.example.com`
 """)
 
 st.divider()
@@ -32,7 +32,7 @@ Submit a document for OCR processing. Returns a job ID immediately (async/queued
 with st.expander("OCR: example request & response"):
     st.markdown("**Request:**")
     st.code("""
-curl -X POST http://173.212.247.3/api/v1/ocr \\
+curl -X POST https://your-server.example.com/api/v1/ocr \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -F "file=@document.jpeg" \\
   -F "doc_type=sijil_ssm"
@@ -65,7 +65,7 @@ The engine extracts fields using the template, then compares against your expect
 with st.expander("Verify: example request & response"):
     st.markdown("**Request:**")
     st.code("""
-curl -X POST http://173.212.247.3/api/v1/verify \\
+curl -X POST https://your-server.example.com/api/v1/verify \\
   -H "X-API-Key: YOUR_API_KEY" \\
   -F "file=@sijil_ssm.jpeg" \\
   -F "doc_type=sijil_ssm" \\
@@ -204,7 +204,7 @@ import requests
 import time
 import json
 
-API_URL = "http://173.212.247.3"
+API_URL = "https://your-server.example.com"
 API_KEY = "YOUR_API_KEY"
 
 def verify_document(file_path, doc_type, expected_fields):
@@ -260,7 +260,7 @@ for name, info in result["fields"].items():
 elif lang == "PHP":
     st.code('''
 <?php
-$apiUrl = "http://173.212.247.3";
+$apiUrl = "https://your-server.example.com";
 $apiKey = "YOUR_API_KEY";
 
 function verifyDocument($filePath, $docType, $expectedFields) {
@@ -331,7 +331,7 @@ elif lang == "C# (.NET)":
     st.code('''
 using System.Text.Json;
 
-var apiUrl = "http://173.212.247.3";
+var apiUrl = "https://your-server.example.com";
 var apiKey = "YOUR_API_KEY";
 
 async Task<JsonElement> VerifyDocumentAsync(
@@ -400,7 +400,7 @@ const fs = require("fs");
 const FormData = require("form-data");
 const axios = require("axios");
 
-const API_URL = "http://173.212.247.3";
+const API_URL = "https://your-server.example.com";
 const API_KEY = "YOUR_API_KEY";
 
 async function verifyDocument(filePath, docType, expectedFields) {
@@ -454,7 +454,7 @@ import java.nio.file.*;
 import com.google.gson.*;
 
 public class OcrVerify {
-    static final String API_URL = "http://173.212.247.3";
+    static final String API_URL = "https://your-server.example.com";
     static final String API_KEY = "YOUR_API_KEY";
 
     public static JsonObject verifyDocument(
@@ -553,7 +553,7 @@ import (
 	"time"
 )
 
-const apiURL = "http://173.212.247.3"
+const apiURL = "https://your-server.example.com"
 const apiKey = "YOUR_API_KEY"
 
 func verifyDocument(filePath, docType string, expected map[string]string) (map[string]interface{}, error) {
@@ -635,7 +635,7 @@ func main() {
 elif lang == "cURL (Bash)":
     st.code("""
 #!/bin/bash
-API_URL="http://173.212.247.3"
+API_URL="https://your-server.example.com"
 API_KEY="YOUR_API_KEY"
 
 # 1. Submit

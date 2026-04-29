@@ -6,7 +6,7 @@ Runtime facts for this project. Keep short — plans live in `IMPLEMENTATION_PLA
 
 ## Where things run
 
-Everything prod runs on **VPS `173.212.247.3`** (Ubuntu 24.04). Local `D:\paddleocr` = dev checkout + git origin only. Do NOT run API/worker locally — they need Redis + Postgres + env vars the VPS has.
+Everything prod runs on **VPS `your-server.example.com`** (Ubuntu 24.04). Local `D:\paddleocr` = dev checkout + git origin only. Do NOT run API/worker locally — they need Redis + Postgres + env vars the VPS has.
 
 ### VPS layout
 
@@ -38,7 +38,7 @@ Everything prod runs on **VPS `173.212.247.3`** (Ubuntu 24.04). Local `D:\paddle
 
 ## Nginx routing (`/etc/nginx/sites-enabled/csai-ocr`)
 
-All via `http://173.212.247.3/` port 80.
+All via `https://your-server.example.com/` port 80.
 
 | Path                         | Backend                       | Gate                        |
 |------------------------------|-------------------------------|-----------------------------|
@@ -49,15 +49,15 @@ All via `http://173.212.247.3/` port 80.
 | `/metrics`                   | 127.0.0.1:8003                | `allow 127.0.0.1` only      |
 | `/` (everything else)        | 127.0.0.1:8503 (Streamlit UI) | basic auth, `.htpasswd-csai`|
 
-**Admin UI access:** browse `http://173.212.247.3/`, basic auth prompt. Streamlit on VPS calls admin API over loopback so nginx allowlist is satisfied. Do NOT open `/admin/v1/` from your laptop browser — 403.
+**Admin UI access:** browse `https://your-server.example.com/`, basic auth prompt. Streamlit on VPS calls admin API over loopback so nginx allowlist is satisfied. Do NOT open `/admin/v1/` from your laptop browser — 403.
 
 ---
 
 ## Access
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@173.212.247.3          # root, for systemctl / nginx
-ssh -i ~/.ssh/id_ed25519 claudeuser@173.212.247.3     # for git operations in /opt/ocr-saas
+ssh -i ~/.ssh/id_ed25519 root@your-server.example.com          # root, for systemctl / nginx
+ssh -i ~/.ssh/id_ed25519 claudeuser@your-server.example.com     # for git operations in /opt/ocr-saas
 ```
 
 Git as root inside `/opt/ocr-saas` = `fatal: dubious ownership` error. Always use `sudo -u claudeuser bash -c 'cd /opt/ocr-saas && git pull'` when SSH'd as root.
@@ -77,7 +77,7 @@ git commit -m "..."
 git push
 
 # 2. VPS (from laptop shell)
-ssh -i ~/.ssh/id_ed25519 root@173.212.247.3 \
+ssh -i ~/.ssh/id_ed25519 root@your-server.example.com \
   "sudo -u claudeuser bash -c 'cd /opt/ocr-saas && git pull' && \
    systemctl restart ocr-api ocr-worker@1 && \
    sleep 3 && systemctl is-active ocr-api ocr-worker@1"
@@ -100,7 +100,7 @@ ssh -i ~/.ssh/id_ed25519 root@173.212.247.3 \
 ## Database migrations (Alembic)
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 claudeuser@173.212.247.3
+ssh -i ~/.ssh/id_ed25519 claudeuser@your-server.example.com
 cd /opt/ocr-saas
 source venv/bin/activate
 alembic upgrade head        # apply new migrations after git pull
@@ -140,9 +140,9 @@ curl -s http://127.0.0.1:8003/metrics | head -20
 curl -s http://127.0.0.1:8004/metrics | grep csai_jobs_total
 
 # From laptop (through nginx)
-curl -s http://173.212.247.3/health
-curl -sS -u admin:<pwd> http://173.212.247.3/            # Streamlit UI landing
-curl -sS -H "X-API-Key: ocr_live_..." http://173.212.247.3/api/v1/jobs
+curl -s https://your-server.example.com/health
+curl -sS -u admin:<pwd> https://your-server.example.com/            # Streamlit UI landing
+curl -sS -H "X-API-Key: ocr_live_..." https://your-server.example.com/api/v1/jobs
 ```
 
 Admin API (`/admin/v1/*`) is **not** reachable from laptop — 403 by nginx allowlist. Admin UI (Streamlit) does the proxying from inside VPS.

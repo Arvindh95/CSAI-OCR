@@ -262,7 +262,7 @@ with st.expander("Step 6 — Hand off API credentials", expanded=False):
 
     Share with the client:
     - The API key
-    - The base URL: `http://173.212.247.3`
+    - The base URL: `https://your-server.example.com`
     - The `doc_type_code` of the granted template(s)
     - A link to the **API Reference** page for integration examples
 

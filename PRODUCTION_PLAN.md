@@ -55,7 +55,7 @@ Explicit non-goals — document now, revisit later:
 
 ## Likely Blockers (confirmed on VPS 2026-04-17)
 
-Real risks observed on target VPS (`173.212.247.3`, Ubuntu 24.04.4 LTS, 23 GB RAM). Resolve or plan mitigation **before Phase 1**.
+Real risks observed on target VPS (`your-server.example.com`, Ubuntu 24.04.4 LTS, 23 GB RAM). Resolve or plan mitigation **before Phase 1**.
 
 | # | Blocker | Impact | Mitigation |
 |---|---------|--------|-----------|
@@ -64,7 +64,7 @@ Real risks observed on target VPS (`173.212.247.3`, Ubuntu 24.04.4 LTS, 23 GB RA
 | 3 | **PaddleOCR model double-load during cutover** — live service holds model (~1–2 GB). New API loads its own copy. Running parallel = 2× RAM. | Transient OOM on cutover. | Cutover strategy: stop legacy `:8000/:8002` **before** starting new API. No parallel run. |
 | 4 | **Live service on `/opt/paddleocr`** — root-owned, serving real traffic, has Windows path literal bug (`PADDLE_PDX_CACHE_HOME = D:\docling\models\paddlex` created as a Linux folder). | Chown mid-flight = log file perms break + service crash. | Build new stack in `/opt/ocr-saas` owned by `claudeuser`. Leave legacy dir alone. Cutover = stop legacy, switch nginx upstream, delete later. |
 | 5 | **Billing defaults unconfirmed** — Phase 3 schema hardcodes: calendar-month UTC periods, failed jobs free, MYR, manual admin provisioning, CSV export only, no tax/portal. | Schema migration cost if wrong. | Lock defaults in §Decisions **before** writing Alembic migration. Answer the 7 billing questions explicitly. |
-| 6 | **No domain / no TLS** — plan assumes LE cert. IP-only = no HTTPS, no SNI, rate limiters keyed on raw IP (fragile behind NAT'd clients). | API keys traverse plaintext. No brand trust. | Acquire domain + point A record to `173.212.247.3` before Phase 7. Until then: treat prod as private beta, issue keys only to controlled clients. |
+| 6 | **No domain / no TLS** — plan assumes LE cert. IP-only = no HTTPS, no SNI, rate limiters keyed on raw IP (fragile behind NAT'd clients). | API keys traverse plaintext. No brand trust. | Acquire domain + point A record to `your-server.example.com` before Phase 7. Until then: treat prod as private beta, issue keys only to controlled clients. |
 | 7 | **UFW self-lockout risk** — default-deny applied without prior `ufw allow 22/tcp` cuts the SSH session. | Locked out of VPS, recovery needs Contabo console. | Always `ufw allow 22/tcp` + `ufw allow from <home_ip>` **first**, enable **second**. Test via a second SSH connection before closing the first. |
 | 8 | **fail2ban + current SSH traffic** — deploy script SSH, monitoring checks, existing admin IPs may trip bans. | Accidental self-ban. | Whitelist `sshd` jail for home IP + `127.0.0.1` in `jail.local`. Start with `bantime = 10m` not permanent until tuned. |
 | 9 | **No backup / no rollback** — single-VPS plan explicitly strips backups per user decision. Disk corruption or dropped DB = total data loss. | Accepted risk. | Snapshot via Contabo panel before Phase 3 schema apply + before every prod deploy. Document in runbook. |
@@ -564,7 +564,7 @@ limit_req_zone $binary_remote_addr zone=per_ip:10m  rate=100r/m;
 
 server {
     listen 80;
-    server_name 173.212.247.3;
+    server_name your-server.example.com;
 
     # --- Client API (versioned) ---
     location /api/v1/ {

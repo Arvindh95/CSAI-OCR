@@ -141,7 +141,7 @@ Scale workers: `systemctl enable --now ocr-worker@2` (one instance per CPU core 
 
 ```bash
 # replace <PUBLIC_IP_OR_DOMAIN> in the shipped config
-sed "s/173.212.247.3/<PUBLIC_IP_OR_DOMAIN>/g" \
+sed "s/your-server.example.com/<PUBLIC_IP_OR_DOMAIN>/g" \
     /opt/ocr-saas/nginx/csai-ocr.conf \
     > /etc/nginx/sites-available/csai-ocr
 

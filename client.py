@@ -21,7 +21,7 @@ with st.sidebar:
 
     base_url = st.text_input(
         "API Base URL",
-        value=st.session_state.get("base_url", "http://173.249.7.25:8000"),
+        value=st.session_state.get("base_url", "https://your-server.example.com"),
         placeholder="http://your-server:8000"
     )
     st.session_state["base_url"] = base_url.rstrip("/")

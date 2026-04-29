@@ -3,7 +3,7 @@
 Companion to `PRODUCTION_PLAN.md` (design). This doc = ordered, checkable tasks. One pass top-to-bottom. Check boxes as you go.
 
 Assumptions:
-- VPS: Ubuntu 24.04.4 LTS (`173.212.247.3`), root SSH via key works.
+- VPS: Ubuntu 24.04.4 LTS (`your-server.example.com`), root SSH via key works.
 - New code lives at `/opt/ocr-saas` owned by `claudeuser` (legacy `/opt/paddleocr` stays untouched until cutover).
 - Local dev on Windows; deploy to Linux VPS.
 - **Read `PRODUCTION_PLAN.md` §Likely Blockers before Phase 1.** All 12 items must be mitigated or accepted.
@@ -12,7 +12,7 @@ Assumptions:
 
 ## Phase 0 — Pre-flight  _(½ day)_
 
-- [ ] SSH key works: `ssh root@173.212.247.3`
+- [ ] SSH key works: `ssh root@your-server.example.com`
 - [ ] Create non-root user: `adduser claudeuser && usermod -aG sudo claudeuser`
 - [ ] Disable root SSH + password auth in `/etc/ssh/sshd_config`, reload sshd
 - [ ] Install base: `apt update && apt install -y git curl build-essential python3.11 python3.11-venv python3-pip`
