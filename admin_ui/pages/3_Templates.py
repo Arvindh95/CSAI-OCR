@@ -21,6 +21,16 @@ st.set_page_config(page_title="Templates", layout="wide")
 fix_url()
 st.title("Templates")
 
+_flash = st.session_state.pop("tpl_flash", None)
+if _flash:
+    _kind, _msg = _flash
+    {"success": st.success, "info": st.info, "warning": st.warning, "error": st.error}.get(_kind, st.info)(_msg)
+
+
+def _flash_and_rerun(kind: str, msg: str) -> None:
+    st.session_state["tpl_flash"] = (kind, msg)
+    st.rerun()
+
 FORM_STRATEGIES = ["anchor", "regex", "between"]
 ANCHOR_DIRS = ["same_line_colon", "right", "below"]
 POST_PROCESS_OPTS = ["", "trim", "uppercase", "lowercase", "number", "date"]
@@ -237,8 +247,7 @@ with sp_col:
                 try:
                     upload_page(tpl["id"], int(page_idx),
                                  up.name, up.getvalue(), up.type or "image/png")
-                    st.success("Uploaded.")
-                    st.rerun()
+                    _flash_and_rerun("success", "Uploaded.")
                 except Exception as e:
                     st.error(err_to_str(e))
 
@@ -425,14 +434,16 @@ if c_save.button("Save", type="primary", key=f"sv-{tpl['id']}"):
         new = update_template(tpl["id"], e_name or None, draft,
                                in_place=in_place)
         label = "in place" if in_place else "new version"
-        st.success(f"Saved {label} · template #{new['id']} v{new['version']}")
         st.session_state["selected_template_id"] = new["id"]
         for k in list(st.session_state.keys()):
             if k.startswith("draft_fields_") or k == "draft_for_tpl":
                 del st.session_state[k]
         st.session_state["edit_idx"] = None
         _reset_form_state()
-        st.rerun()
+        _flash_and_rerun(
+            "success",
+            f"Saved {label} · template #{new['id']} v{new['version']}",
+        )
     except Exception as e:
         st.error(err_to_str(e))
 
@@ -445,9 +456,11 @@ if c_del.button("Delete", disabled=not confirm, key=f"db-{tpl['id']}"):
     hard = del_mode.startswith("Hard")
     try:
         delete_template(tpl["id"], hard=hard)
-        st.success("Permanently deleted." if hard else "Soft-deleted.")
         st.session_state.pop("selected_template_id", None)
-        st.rerun()
+        _flash_and_rerun(
+            "success",
+            "Permanently deleted." if hard else "Soft-deleted.",
+        )
     except Exception as e:
         st.error(err_to_str(e))
 
