@@ -155,7 +155,7 @@ st.subheader("Typical integration workflow")
 st.markdown("""
 ```
 1. Admin creates template + uploads sample image
-2. Admin annotates fields (zone/anchor/regex) on Annotate page
+2. Admin annotates fields (zone/anchor/regex/between) on Annotate page
 3. Admin grants template to client (Client Templates page)
 4. Client app submits document:
      POST /api/v1/ocr   (extract fields)

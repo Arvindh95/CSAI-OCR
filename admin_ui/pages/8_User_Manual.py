@@ -36,7 +36,7 @@ with c3:
     st.markdown("**Field**")
     st.markdown("""
     A named value to extract from the document (e.g. `nama_perniagaan`).
-    Uses one of three strategies: Zone, Anchor, or Regex.
+    Uses one of four strategies: Zone, Anchor, Regex, or Between.
     """)
 
 st.divider()
@@ -123,7 +123,7 @@ with st.expander("Step 4 — Annotate fields", expanded=False):
     1. Enter the **Template ID** in the number input at the top, then select the **Page** from the dropdown.
     2. Click **Load OCR lines (preview)** — this runs OCR on the sample image
        and overlays the detected text boxes.  Result is cached for the session.
-    3. Add fields using one of three methods:
+    3. Add fields using one of four methods:
 
     **Zone field (draw on canvas):**
     - Draw a rectangle around the value area on the image.
@@ -131,11 +131,13 @@ with st.expander("Step 4 — Annotate fields", expanded=False):
     - Tune `min_overlap` if the wrong lines are captured.
     - Set field name and post-process, then click **Add zone field**.
 
-    **Anchor or Regex field (edit raw JSON):**
+    **Anchor / Regex / Between field (edit raw JSON):**
     - Scroll down to the **Edit raw JSON (optional)** textarea.
     - Add your field object to the JSON array.
     - Click **Apply JSON to draft** to update the draft fields list.
     - See **Field Strategies Guide** for full JSON reference.
+    - Use **Between** when the value is a multi-line block bracketed by two
+      known sentences (e.g. an address paragraph between two section headers).
 
     4. Repeat for each field.
     5. Click **Save** when done.
@@ -187,7 +189,7 @@ with st.expander("The OCR is extracting the wrong text for a Zone field."):
     - Make the zone larger — OCR line bounding boxes may extend slightly outside
       the visible text.
     - Use `extract_regex` inside the zone config to filter the merged text further.
-    - If the document layout varies between scans, switch to an Anchor or Regex field.
+    - If the document layout varies between scans, switch to an Anchor, Regex, or Between field.
     """)
 
 with st.expander("My Anchor field returns nothing."):
@@ -197,6 +199,25 @@ with st.expander("My Anchor field returns nothing."):
     - Add OCR variants to the `labels` list (e.g. `["NAMA", "NAME", "NEMA"]`).
     - Matching is case-insensitive but must appear somewhere in the OCR line.
     - Try `direction: same_line_colon` first — it is the most robust for label: value layouts.
+    """)
+
+with st.expander("My Between field returns nothing or the wrong text."):
+    st.markdown("""
+    - The **`after`** phrase must appear on the page; OCR may have split or
+      misread it. Use **Load OCR lines (preview)** on the Annotate page to
+      see the raw OCR output and adjust the phrase to match what OCR really
+      returned.
+    - If the captured value also contains the next section, the **`before`**
+      phrase is wrong or missing. Pick a sentence that always follows the
+      block you want.
+    - Internal spaces in `after`/`before` are matched as `\\s+`, so OCR line
+      breaks inside the phrase are tolerated automatically.
+    - Make `after` specific enough that it occurs **only once** on the page —
+      otherwise the regex matches the first occurrence, which may be wrong.
+    - Set `collapse_whitespace: false` if you actually want `\\n` preserved
+      between the original OCR lines (default collapses them to single space).
+    - Use `skip_after: ["di"]` (or any other connector words) to drop a
+      leading filler token from the captured value.
     """)
 
 with st.expander("My Regex field returns the full match instead of just the value."):
@@ -244,6 +265,6 @@ st.divider()
 
 st.markdown("""
 **Further reading:**
-- [Field Strategies Guide](#) — zone, anchor, regex config reference
+- [Field Strategies Guide](#) — zone, anchor, regex, between config reference
 - [API Reference](#) — endpoint specs, error codes, code examples
 """)
