@@ -209,3 +209,63 @@ def run_ocr_job(job_id_str: str, endpoint: str, storage_path: str,
                 template_id: int | None = None):
     asyncio.run(_process(UUID(job_id_str), endpoint, storage_path,
                          client_id, period_id, template_id))
+
+
+async def _reconcile_failed(job_id: UUID, client_id: int, period_id: int,
+                            err: str, storage_path: str):
+    db_url = os.environ["DATABASE_URL"]
+    engine = create_async_engine(db_url, poolclass=NullPool,
+                                  connect_args={"ssl": False})
+    Session = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with Session() as s:
+            from sqlalchemy import select
+            row = (await s.execute(
+                select(Job).where(Job.id == job_id)
+            )).scalar_one_or_none()
+            if row is None or row.status in ("done", "failed"):
+                return
+            await mark_failed(s, job_id, err[:500])
+            r = get_redis()
+            try:
+                await release(r, client_id, period_id)
+            finally:
+                await r.aclose()
+            s.add(UsageLog(
+                client_id=client_id, period_id=period_id, job_id=job_id,
+                pages=row.pages_submitted or 1, status="error",
+                reject_reason=err[:200],
+                timestamp=datetime.now(timezone.utc),
+            ))
+            await s.commit()
+
+        storage_paths = [storage_path]
+        try:
+            async with Session() as s:
+                meta = (await s.execute(
+                    select(Job.input_meta).where(Job.id == job_id)
+                )).scalar_one_or_none()
+                if meta and meta.get("storage_paths"):
+                    storage_paths = list(meta["storage_paths"])
+        except Exception:
+            pass
+        for sp in storage_paths:
+            try:
+                Path(sp).unlink(missing_ok=True)
+            except Exception:
+                pass
+    finally:
+        await engine.dispose()
+
+
+def on_ocr_failure(job, connection, exc_type, exc_value, traceback):
+    """RQ failure callback. Runs even on timeout/OOM. Args mirror enqueue."""
+    try:
+        job_id_str, _endpoint, storage_path, client_id, period_id, *_rest = job.args
+        err = f"{exc_type.__name__ if exc_type else 'Failed'}: {exc_value}"
+        asyncio.run(_reconcile_failed(
+            UUID(job_id_str), client_id, period_id, err, storage_path,
+        ))
+    except Exception:
+        logger.exception("on_ocr_failure reconcile failed job=%s",
+                         getattr(job, "id", "?"))

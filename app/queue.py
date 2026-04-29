@@ -34,5 +34,6 @@ def enqueue_ocr_job(
         job_id=str(job_id),
         result_ttl=3600,
         failure_ttl=86400,
-        job_timeout=120,
+        job_timeout=600,
+        on_failure="app.worker.on_ocr_failure",
     )
