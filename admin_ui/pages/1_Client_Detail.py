@@ -2,18 +2,28 @@ import streamlit as st
 
 from admin_ui._errors import err_to_str
 from admin_ui._url_fix import fix_url
-from admin_ui.api import get_client, get_plan, get_usage, list_jobs
+from admin_ui.api import get_client, get_plan, get_usage, list_clients, list_jobs
 
 st.set_page_config(page_title="Client Detail", layout="wide")
 fix_url()
 
 cid = st.session_state.get("selected_client_id")
 if not cid:
-    cid = st.number_input("Client ID", min_value=1, step=1, value=1)
+    try:
+        _all = list_clients()
+    except Exception as e:
+        st.error(err_to_str(e))
+        st.stop()
+    if not _all:
+        st.info("No clients yet. Create one on the **Actions** page.")
+        st.stop()
+    _opts = {f"#{c['id']} — {c['name']} ({c['email']})": c["id"] for c in _all}
+    _label = st.selectbox("Client", list(_opts.keys()),
+                           help="Type to search by name, email, or ID.")
     if not st.button("Load"):
         st.stop()
-    st.session_state["selected_client_id"] = int(cid)
-    cid = int(cid)
+    cid = int(_opts[_label])
+    st.session_state["selected_client_id"] = cid
 
 try:
     client = get_client(cid)

@@ -24,7 +24,12 @@ if not hasattr(_st_image, "image_to_url"):
 from streamlit_drawable_canvas import st_canvas
 
 from admin_ui._url_fix import fix_url
-from admin_ui.api import get_page_lines, get_template, update_template
+from admin_ui.api import (
+    get_page_lines,
+    get_template,
+    list_templates,
+    update_template,
+)
 
 
 def _overlap_ratio(line_bbox, zone):
@@ -45,9 +50,29 @@ fix_url()
 st.title("Annotate template zones")
 
 sel = st.session_state.get("selected_template_id")
-tid = st.number_input("Template ID", min_value=1, step=1,
-                       value=int(sel) if sel else 1)
-tid = int(tid)
+try:
+    _all_tpls = list_templates(active_only=False)
+except Exception as e:
+    st.error(err_to_str(e))
+    st.stop()
+if not _all_tpls:
+    st.info("No templates yet. Create one on the **Templates** page.")
+    st.stop()
+_opts = {
+    f"#{t['id']} — {t['name']} · `{t['doc_type_code']}` v{t['version']}"
+    f"{' ⛔' if not t['is_active'] else ''}": t["id"]
+    for t in _all_tpls
+}
+_default_idx = 0
+if sel:
+    for i, v in enumerate(_opts.values()):
+        if v == int(sel):
+            _default_idx = i
+            break
+_label = st.selectbox("Template", list(_opts.keys()), index=_default_idx,
+                       help="Type to search by name, doc_type, or ID.")
+tid = int(_opts[_label])
+st.session_state["selected_template_id"] = tid
 
 try:
     tpl = get_template(tid)

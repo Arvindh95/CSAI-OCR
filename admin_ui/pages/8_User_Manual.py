@@ -120,7 +120,7 @@ with st.expander("Step 4 — Annotate fields", expanded=False):
     st.markdown("""
     Navigate to **Annotate** in the sidebar.
 
-    1. Enter the **Template ID** in the number input at the top, then select the **Page** from the dropdown.
+    1. Pick the **Template** from the searchable dropdown at the top, then select the **Page** from the next dropdown.
     2. Click **Load OCR lines (preview)** — this runs OCR on the sample image
        and overlays the detected text boxes.  Result is cached for the session.
     3. Add fields using one of four methods:
@@ -155,7 +155,7 @@ with st.expander("Step 5 — Grant template to client", expanded=False):
     st.markdown("""
     Navigate to **Client Templates** in the sidebar.
 
-    1. Enter the **Client ID** in the number input at the top.
+    1. Pick the **Client** from the searchable dropdown at the top.
     2. Under **Grant a template**, select the template from the dropdown.
     3. Click **Grant**.
 

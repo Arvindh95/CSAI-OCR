@@ -9,6 +9,7 @@ from admin_ui.api import (
     deactivate_client,
     get_client,
     get_plan,
+    list_clients,
     reset_quota,
     rotate_key,
     update_client,
@@ -46,9 +47,25 @@ st.divider()
 
 st.header("Client operations")
 stored = st.session_state.get("selected_client_id")
-cid = st.number_input("Client ID", min_value=1, step=1,
-                      value=int(stored) if stored else 1)
-cid = int(cid)
+try:
+    _all_clients = list_clients()
+except Exception as e:
+    st.error(err_to_str(e))
+    st.stop()
+if not _all_clients:
+    st.info("No clients yet. Create one above.")
+    st.stop()
+_opts = {f"#{c['id']} — {c['name']} ({c['email']})": c["id"] for c in _all_clients}
+_default_idx = 0
+if stored:
+    for i, v in enumerate(_opts.values()):
+        if v == int(stored):
+            _default_idx = i
+            break
+_label = st.selectbox("Client", list(_opts.keys()), index=_default_idx,
+                       help="Type to search by name, email, or ID.")
+cid = int(_opts[_label])
+st.session_state["selected_client_id"] = cid
 
 try:
     client = get_client(cid)

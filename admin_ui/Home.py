@@ -44,7 +44,9 @@ st.dataframe(rows, use_container_width=True, hide_index=True)
 
 st.divider()
 st.subheader("Open a client")
-cid = st.number_input("Client ID", min_value=1, step=1, value=clients[0]["id"])
+_opts = {f"#{c['id']} — {c['name']} ({c['email']})": c["id"] for c in clients}
+_label = st.selectbox("Client", list(_opts.keys()),
+                       help="Type to search by name, email, or ID.")
 if st.button("Open", type="primary"):
-    st.session_state["selected_client_id"] = int(cid)
+    st.session_state["selected_client_id"] = int(_opts[_label])
     st.switch_page("pages/1_Client_Detail.py")

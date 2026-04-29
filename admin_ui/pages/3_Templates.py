@@ -11,6 +11,7 @@ from admin_ui.api import (
     delete_page,
     delete_template,
     get_template,
+    list_clients,
     list_templates,
     test_template,
     update_template,
@@ -168,7 +169,23 @@ with tab_create:
         scope = st.radio("Scope", ["global", "client-specific"], horizontal=True)
         client_id = None
         if scope == "client-specific":
-            client_id = st.number_input("Client ID", min_value=1, step=1, value=1)
+            try:
+                _ct_clients = list_clients(active_only=True)
+            except Exception as _ce:
+                st.error(err_to_str(_ce))
+                _ct_clients = []
+            if not _ct_clients:
+                st.warning("No active clients. Create one on the **Actions** page.")
+            else:
+                _ct_opts = {
+                    f"#{c['id']} — {c['name']} ({c['email']})": c["id"]
+                    for c in _ct_clients
+                }
+                _ct_label = st.selectbox(
+                    "Client", list(_ct_opts.keys()),
+                    help="Type to search by name, email, or ID.",
+                )
+                client_id = int(_ct_opts[_ct_label])
         st.caption("Fields — JSON array; example below.")
         default = json.dumps([
             {"name": "invoice_no", "page_index": 0, "strategy": "anchor",
