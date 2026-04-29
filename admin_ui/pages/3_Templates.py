@@ -244,13 +244,20 @@ with sp_col:
     else:
         for p in tpl["pages"]:
             st.markdown(f"- page **{p['page_index']}** · "
-                        f"{p['image_width']}×{p['image_height']} · "
-                        f"`{p['image_path']}`")
+                        f"{p['image_width']}×{p['image_height']}")
+            with st.expander(f"Preview page {p['page_index']}",
+                              expanded=False):
+                try:
+                    st.image(p["image_path"], use_container_width=True)
+                except Exception as _ie:
+                    st.warning(f"Image not available: {_ie}")
+                st.caption(f"`{p['image_path']}`")
             if st.button(f"Delete page {p['page_index']}",
                          key=f"delpg-{p['page_index']}"):
                 try:
                     delete_page(tpl["id"], p["page_index"])
-                    st.rerun()
+                    _flash_and_rerun("success",
+                                      f"Deleted page {p['page_index']}.")
                 except Exception as e:
                     st.error(err_to_str(e))
     with st.form(f"upl-{tpl['id']}"):
