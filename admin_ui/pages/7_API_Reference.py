@@ -24,12 +24,17 @@ Submit a document for OCR processing. Returns a job ID immediately (async/queued
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `file` | file | Yes | Image (JPEG/PNG/TIFF) |
+| `file` | file | One of `file` / `files` | Single-page request — Image (JPEG/PNG/TIFF) |
+| `files` | file (repeated) | One of `file` / `files` | Multi-page request — repeat the field once per page (`-F files=@p0.png -F files=@p1.png ...`). Total pages must be ≤ plan's `max_pages_per_txn`. |
 | `doc_type` | string | No | Template `doc_type_code` for structured extraction |
 | `Idempotency-Key` | header | No | Prevent duplicate submissions |
+
+> **Pages match by upload order.** First `files` upload becomes `page_index=0`,
+> second becomes `page_index=1`, etc. Templates with multiple sample pages
+> resize each upload to the matching page's dimensions before OCR.
 """)
 
-with st.expander("OCR: example request & response"):
+with st.expander("OCR: single-page request"):
     st.markdown("**Request:**")
     st.code("""
 curl -X POST https://your-server.example.com/api/v1/ocr \\
@@ -37,6 +42,20 @@ curl -X POST https://your-server.example.com/api/v1/ocr \\
   -F "file=@document.jpeg" \\
   -F "doc_type=sijil_ssm"
 """, language="bash")
+
+with st.expander("OCR: multi-page request"):
+    st.markdown("**Request (3 pages in one transaction):**")
+    st.code("""
+curl -X POST https://your-server.example.com/api/v1/ocr \\
+  -H "X-API-Key: YOUR_API_KEY" \\
+  -F "files=@page0.png" \\
+  -F "files=@page1.png" \\
+  -F "files=@page2.png" \\
+  -F "doc_type=sijil_ssm"
+""", language="bash")
+    st.caption("Counts as **1** transaction against `max_transactions`. "
+               "Counts as **3 pages** against `max_pages_per_txn` "
+               "(must be ≤ plan limit, otherwise 400).")
 
     st.markdown("**Response (202 Accepted):**")
     st.json({"job_id": "4ec0eecc-214e-4bc0-86b0-e7b5c4447c88", "status": "queued"})
@@ -56,7 +75,8 @@ The engine extracts fields using the template, then compares against your expect
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `file` | file | Yes | Image (JPEG/PNG/TIFF) |
+| `file` | file | One of `file` / `files` | Single-page request — Image (JPEG/PNG/TIFF) |
+| `files` | file (repeated) | One of `file` / `files` | Multi-page request — repeat the field once per page. |
 | `doc_type` | string | Yes | Template `doc_type_code` |
 | `expected_fields` | string (JSON) | Yes | JSON object of `field_name: expected_value` pairs |
 | `Idempotency-Key` | header | No | Prevent duplicate submissions |

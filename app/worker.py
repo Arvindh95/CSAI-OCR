@@ -92,39 +92,49 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
             async with Session() as s:
                 template_dict = await load_template_dict(s, template_id)
 
-        # Resize uploaded image to match template page dims so OCR coords
-        # align with annotated zone coordinates.
+        # Load input_meta: storage_paths list (multi-page) + verify expected_fields
+        storage_paths: list[str] = [storage_path]
+        expected_fields = None
+        async with Session() as s:
+            from sqlalchemy import select
+            row = (await s.execute(
+                select(Job.input_meta).where(Job.id == job_id)
+            )).scalar_one_or_none()
+            if row:
+                if row.get("storage_paths"):
+                    storage_paths = list(row["storage_paths"])
+                if endpoint == "/api/v1/verify":
+                    expected_fields = row.get("expected_fields")
+
+        # Resize each uploaded page to match template page dims so OCR
+        # coords align with annotated zone coordinates.
         if template_dict is not None:
             _pages = template_dict.get("pages", [])
-            _p0 = next((p for p in _pages if p["page_index"] == 0), None)
-            if _p0:
+            _pages_by_idx = {p["page_index"]: p for p in _pages}
+            for i, sp in enumerate(storage_paths):
+                target = _pages_by_idx.get(i)
+                if not target:
+                    continue
                 try:
                     from PIL import Image
-                    import io as _io
-                    img = Image.open(storage_path)
+                    img = Image.open(sp)
                     img.load()
-                    tw, th = _p0["width"], _p0["height"]
+                    tw, th = target["width"], target["height"]
                     if img.size != (tw, th):
                         img = img.convert("RGB").resize((tw, th), Image.LANCZOS)
-                        img.save(storage_path, quality=95)
+                        img.save(sp, quality=95)
                 except Exception:
                     pass
 
-        # Load input_meta for verify jobs
-        expected_fields = None
-        if endpoint == "/api/v1/verify":
-            async with Session() as s:
-                from sqlalchemy import select
-                row = (await s.execute(
-                    select(Job.input_meta).where(Job.id == job_id)
-                )).scalar_one_or_none()
-                if row:
-                    expected_fields = row.get("expected_fields")
-
         try:
-            lines = await asyncio.get_event_loop().run_in_executor(
-                None, _run_paddle, storage_path
-            )
+            lines = []
+            for i, sp in enumerate(storage_paths):
+                page_lines = await asyncio.get_event_loop().run_in_executor(
+                    None, _run_paddle, sp
+                )
+                for ln in page_lines:
+                    ln["page_index"] = i
+                lines.extend(page_lines)
             if template_dict is not None:
                 fields = extract_with_template(lines, template_dict)
 
@@ -181,10 +191,11 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
         jobs_total.labels(status=status, endpoint=endpoint).inc()
     finally:
         await engine.dispose()
-        try:
-            Path(storage_path).unlink(missing_ok=True)
-        except Exception:
-            pass
+        for sp in storage_paths if 'storage_paths' in locals() else [storage_path]:
+            try:
+                Path(sp).unlink(missing_ok=True)
+            except Exception:
+                pass
 
 
 def run_ocr_job(job_id_str: str, endpoint: str, storage_path: str,

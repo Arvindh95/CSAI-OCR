@@ -1,3 +1,4 @@
+import hashlib
 import ipaddress
 import json as _json
 import os
@@ -48,7 +49,8 @@ def _client_ip(request: Request) -> str | None:
 @router.post("/verify", status_code=202)
 async def submit_verify(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    files: list[UploadFile] = File(default=[]),
     doc_type: str = Form(...),
     expected_fields: str = Form(...,
         description='JSON object of field_name:expected_value pairs, '
@@ -65,11 +67,32 @@ async def submit_verify(
     if not isinstance(expected, dict) or not expected:
         raise BadRequest("expected_fields must be a non-empty JSON object")
 
-    data = await file.read()
+    upload_files: list[UploadFile] = []
+    if files:
+        upload_files.extend(files)
+    if file is not None:
+        upload_files.append(file)
+    if not upload_files:
+        raise BadRequest("no file uploaded")
+
     plan = await current_plan(session, client.id)
     if plan is None:
         raise BadRequest("no active plan for client")
-    mime, pages, body_hash = validate_upload(data, max_pages=plan.max_pages_per_txn)
+    if len(upload_files) > plan.max_pages_per_txn:
+        raise BadRequest(
+            f"too many pages: {len(upload_files)} > plan limit {plan.max_pages_per_txn}",
+            detail={"pages": len(upload_files), "max_pages": plan.max_pages_per_txn},
+        )
+
+    file_records: list[dict] = []
+    per_file_hashes: list[bytes] = []
+    for uf in upload_files:
+        data = await uf.read()
+        mime, _pg, fhash = validate_upload(data, max_pages=plan.max_pages_per_txn)
+        file_records.append({"data": data, "mime": mime, "filename": uf.filename})
+        per_file_hashes.append(fhash)
+    pages = len(file_records)
+    body_hash = hashlib.sha256(b"".join(per_file_hashes)).digest()
 
     template = await resolve_for_client(session, client.id, doc_type)
 
@@ -101,37 +124,49 @@ async def submit_verify(
             await discard_idem(redis, client.id, idempotency_key, job_id)
         raise QuotaExceeded(f"plan limit {plan.max_transactions} reached this period")
 
-    storage_path = STORAGE_DIR / f"{job_id}{_MIME_EXT[mime]}"
+    storage_paths: list[Path] = [
+        STORAGE_DIR / f"{job_id}_p{i}{_MIME_EXT[rec['mime']]}"
+        for i, rec in enumerate(file_records)
+    ]
+    primary_path = storage_paths[0]
+    primary_mime = file_records[0]["mime"]
+
     try:
         await create_job(
             session, client.id, period.id, endpoint="/api/v1/verify",
             pages=pages, idempotency_key=idempotency_key, body_hash=body_hash,
             input_meta={
-                "mime": mime, "filename": file.filename,
+                "mime": primary_mime,
+                "filename": file_records[0]["filename"],
                 "doc_type": doc_type,
                 "expected_fields": expected,
+                "storage_paths": [str(p) for p in storage_paths],
+                "filenames": [r["filename"] for r in file_records],
+                "mimes": [r["mime"] for r in file_records],
             },
             ip_address=_client_ip(request),
             job_id=job_id,
             template_id=template.id,
             template_version=template.version,
         )
-        storage_path.write_bytes(data)
+        for sp, rec in zip(storage_paths, file_records):
+            sp.write_bytes(rec["data"])
         await session.commit()
     except Exception:
         await session.rollback()
         await release(redis, client.id, period.id)
-        try:
-            storage_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        for sp in storage_paths:
+            try:
+                sp.unlink(missing_ok=True)
+            except OSError:
+                pass
         if idempotency_key:
             await discard_idem(redis, client.id, idempotency_key, job_id)
         raise
 
     try:
         enqueue_ocr_job(
-            job_id, "/api/v1/verify", str(storage_path), client.id, period.id,
+            job_id, "/api/v1/verify", str(primary_path), client.id, period.id,
             template_id=template.id,
         )
     except Exception:
@@ -141,15 +176,16 @@ async def submit_verify(
         except Exception:
             await session.rollback()
         await release(redis, client.id, period.id)
-        try:
-            storage_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+        for sp in storage_paths:
+            try:
+                sp.unlink(missing_ok=True)
+            except OSError:
+                pass
         if idempotency_key:
             await discard_idem(redis, client.id, idempotency_key, job_id)
         raise
 
     jobs_submitted_total.labels(
-        template=(doc_type or "none"), mime=mime,
+        template=(doc_type or "none"), mime=primary_mime,
     ).inc()
     return {"job_id": str(job_id), "status": "queued"}
