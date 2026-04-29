@@ -54,3 +54,10 @@ tmp/
 OCR App Startup.md
 *.jpeg
 *.jpg
+
+# IDE / agent
+.claude/
+
+# Sample docs (kept locally only)
+Sijil_*.png
+Sijil_*.jpg
