@@ -430,14 +430,14 @@ async def test_template(
     if not data:
         raise BadRequest("empty file")
     suffix = (file.filename or "x").rsplit(".", 1)[-1].lower()
-    if suffix not in ("jpg", "jpeg", "png", "pdf"):
+    if suffix not in ("jpg", "jpeg", "png"):
         suffix = "png"
 
     # Resize test image to match template page dimensions so OCR coords
     # land in the same pixel space as the annotated zone coordinates.
     pages = await _load_pages(session, template_id)
     page0 = next((p for p in pages if p.page_index == 0), None)
-    if page0 is not None and suffix != "pdf":
+    if page0 is not None:
         import io as _io
         try:
             img = Image.open(_io.BytesIO(data))

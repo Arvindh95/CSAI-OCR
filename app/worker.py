@@ -97,7 +97,7 @@ async def _process(job_id: UUID, endpoint: str, storage_path: str,
         if template_dict is not None:
             _pages = template_dict.get("pages", [])
             _p0 = next((p for p in _pages if p["page_index"] == 0), None)
-            if _p0 and not storage_path.lower().endswith(".pdf"):
+            if _p0:
                 try:
                     from PIL import Image
                     import io as _io

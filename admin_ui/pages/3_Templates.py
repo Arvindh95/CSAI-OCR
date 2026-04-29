@@ -490,8 +490,8 @@ if c_del.button("Delete", disabled=not confirm, key=f"db-{tpl['id']}"):
 
 st.divider()
 st.subheader("Test extraction")
-tfile = st.file_uploader("Upload a test document (png/jpg/pdf)",
-                          type=["png", "jpg", "jpeg", "pdf"],
+tfile = st.file_uploader("Upload a test document (png/jpg)",
+                          type=["png", "jpg", "jpeg"],
                           key=f"tf-{tpl['id']}")
 if st.button("Run test", disabled=tfile is None):
     if tfile is None:

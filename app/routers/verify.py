@@ -26,8 +26,7 @@ STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 router = APIRouter(prefix="/api/v1")
 
 _MIME_EXT = {
-    "image/jpeg": ".jpg", "image/png": ".png",
-    "image/tiff": ".tif", "application/pdf": ".pdf",
+    "image/jpeg": ".jpg", "image/png": ".png", "image/tiff": ".tif",
 }
 
 

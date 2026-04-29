@@ -55,7 +55,7 @@ def test_extract_lines_multi_page_page_index_set():
             "rec_polys": [[[0, 0], [60, 0], [60, 20], [0, 20]]],
         }),
     ]
-    lines = extract_lines(_FakeOCR(pages), "x.pdf")
+    lines = extract_lines(_FakeOCR(pages), "x.tif")
     assert [l["page_index"] for l in lines] == [0, 1]
     assert [l["text"] for l in lines] == ["PAGE1", "PAGE2"]
 

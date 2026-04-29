@@ -24,7 +24,7 @@ Submit a document for OCR processing. Returns a job ID immediately (async/queued
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `file` | file | Yes | Image (JPEG/PNG) or PDF |
+| `file` | file | Yes | Image (JPEG/PNG/TIFF) |
 | `doc_type` | string | No | Template `doc_type_code` for structured extraction |
 | `Idempotency-Key` | header | No | Prevent duplicate submissions |
 """)
@@ -56,7 +56,7 @@ The engine extracts fields using the template, then compares against your expect
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `file` | file | Yes | Image (JPEG/PNG) or PDF |
+| `file` | file | Yes | Image (JPEG/PNG/TIFF) |
 | `doc_type` | string | Yes | Template `doc_type_code` |
 | `expected_fields` | string (JSON) | Yes | JSON object of `field_name: expected_value` pairs |
 | `Idempotency-Key` | header | No | Prevent duplicate submissions |

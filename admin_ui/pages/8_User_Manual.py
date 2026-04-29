@@ -342,7 +342,7 @@ with st.expander("How do I handle multi-page documents?"):
     st.markdown("""
     Upload one image per page to the template (page index 0, 1, 2...).
     Each field has a `page_index` that tells the engine which page to search.
-    The API accepts both JPEG/PNG (single page) and PDF (multi-page) files.
+    The API accepts JPEG / PNG / TIFF images (one page each). PDF is not supported.
     """)
 
 with st.expander("What happens when a client hits the quota limit?"):

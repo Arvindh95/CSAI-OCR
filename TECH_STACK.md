@@ -20,7 +20,6 @@
 - **PaddlePaddle 3.3** — underlying DL framework (CPU build, MKL-DNN disabled)
 - **PaddleX 3.4** — model registry / pipeline glue
 - **Pillow 11.2** — image manipulation, overlay rendering
-- **pypdf 4.2** — PDF page extraction
 - **python-magic** — MIME sniffing on uploads
 
 ## Job queue / worker (`app/worker.py`)

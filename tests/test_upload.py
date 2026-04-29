@@ -35,6 +35,6 @@ def test_accepts_png():
     assert body_hash == hashlib.sha256(PNG_1X1).digest()
 
 
-def test_rejects_corrupt_pdf():
-    with pytest.raises(BadRequest):
+def test_rejects_pdf_now_unsupported():
+    with pytest.raises(UnsupportedMedia):
         validate_upload(b"%PDF-1.4 not really")
