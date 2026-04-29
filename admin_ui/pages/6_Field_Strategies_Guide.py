@@ -11,6 +11,14 @@ Use this guide to understand the four extraction strategies available when
 building templates.  You can **mix strategies** in a single template -- use
 whichever fits each field best.
 
+> **How to add fields**
+> - **Anchor / Regex / Between** → use the **form editor** on the Templates
+>   page (template detail → *Fields* section).  The form generates the
+>   exact JSON shapes shown below.
+> - **Zone** → draw on the canvas on the **Annotate** page.
+> - Either way, you can also paste raw JSON into the *fields JSON (raw)*
+>   textarea and click *Apply JSON to draft*.
+
 ---
 """)
 

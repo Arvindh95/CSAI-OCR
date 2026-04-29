@@ -47,9 +47,10 @@ st.header("End-to-end workflow")
 st.markdown("""
 ```
 1. Create a client (plan settings included)   (Actions page)
-2. Create a document template                 (Templates page)
+2. Create a document template                 (Templates page → Create tab)
 3. Upload sample image                        (Templates page → template detail)
-4. Annotate fields                            (Annotate page)
+4a. Add anchor / regex / between fields       (Templates page → form editor)
+4b. Add zone fields by drawing on the image   (Annotate page → canvas)
 5. Grant template to client                   (Client Templates page)
 6. Hand off API key to client                 (shown once at creation)
 7. Client integrates the API                  (API Reference page)
@@ -94,13 +95,15 @@ with st.expander("Step 2 — Create a document template", expanded=False):
     3. Optionally edit the pre-filled **fields** JSON, or leave it and edit later.
     4. Click **Create**.
 
-    Fields can be added or edited here (fields JSON textarea) or visually in the Annotate page.
+    Fields can be added later via the **form editor** on the template detail
+    (anchor / regex / between), the **JSON textarea** (any strategy), or the
+    **Annotate page canvas** (zone strategy only).
     """)
 
 # Step 3
 with st.expander("Step 3 — Upload a sample image", expanded=False):
     st.markdown("""
-    Still on the **Templates** page, open your template (Browse tab → enter ID → Open).
+    Still on the **Templates** page, open your template (Browse tab → pick template → Open).
 
     Under **Sample pages**:
     1. Set **Page index** (0-based — first page = 0).
@@ -115,39 +118,128 @@ with st.expander("Step 3 — Upload a sample image", expanded=False):
     to see extracted fields without going through the API.
     """)
 
-# Step 4
-with st.expander("Step 4 — Annotate fields", expanded=False):
+# Step 4a
+with st.expander("Step 4a — Add anchor / regex / between fields (Templates page form)",
+                  expanded=False):
+    st.markdown("""
+    Open the template (Templates → Browse → pick → Open). Scroll to **Fields**.
+    Two columns appear: a **form** on the left and a **draft list + raw JSON**
+    on the right. Use the form for anchor / regex / between; use Annotate
+    (Step 4b) for zone fields.
+
+    #### Common inputs (every field has these)
+
+    - **Field name** — identifier returned by the API
+      (e.g. `nama_perniagaan`). Snake-case recommended.
+    - **Page index** — which uploaded page to search (0-based).
+      For single-page docs leave as `0`.
+    - **Strategy** — pick `anchor`, `regex`, or `between`.
+      Switching this swaps the strategy-specific inputs below it.
+    - **post_process** — clean-up applied to the extracted value.
+      Choices: blank (no clean-up), `trim`, `uppercase`, `lowercase`,
+      `number`, `date`. See *Post-process options* in the **Field Strategies Guide**.
+    - **required** — if checked, the verify endpoint will fail when this field is missing.
+    - **display_order** — controls the order of fields in API responses.
+      Lower numbers appear first.
+
+    #### Anchor inputs
+
+    Use when the value sits next to a fixed label (e.g. `NAMA PERNIAGAAN : ...`).
+
+    - **Labels (one per line)** — list of label aliases. The engine tries each
+      one until a match is found. Add OCR variants here
+      (e.g. `NAMA PERNIAGAAN`, `BUSINESS NAME`).
+    - **Direction** — where the value sits relative to the label:
+      - `same_line_colon` — same line, after a `:` or `-`
+      - `right` — nearest box on the same row to the right
+      - `below` — nearest box directly underneath
+    - **max_distance_px** — for `right` / `below` only. Maximum pixel
+      distance between the label box and the value box. `0` = unlimited.
+
+    #### Regex inputs
+
+    Use when the value matches a unique pattern anywhere on the page
+    (registration numbers, dates, amounts).
+
+    - **Pattern** — Python regex. All OCR lines on the page are joined with
+      `\\n` before matching, so you can match across line breaks.
+    - **Capture group** — `0` returns the full match, `1` returns the first
+      `(...)` group, etc. Use `1` with parentheses around the value to
+      strip the surrounding text.
+    - **ignore_case** — case-insensitive matching (default on).
+
+    #### Between inputs
+
+    Use when the value is a free-form block sandwiched between two known
+    phrases (multi-line addresses, descriptions inside paragraphs).
+
+    - **after** — phrase that must appear *before* the value.
+      Internal spaces match `\\s+`, so OCR line breaks inside the phrase
+      are tolerated.
+    - **before** — phrase that must appear *after* the value. Optional —
+      leave blank to capture everything from `after` to the end of the page.
+    - **ignore_case** — case-insensitive phrase matching (default on).
+    - **skip_after tokens (one per line)** — drop these leading words from
+      the captured value (e.g. `di` to skip a connector word). Optional.
+    - **collapse_whitespace** — if checked (default), runs of whitespace
+      including OCR line breaks are replaced with a single space.
+      Uncheck only if you need the raw `\\n` between source lines.
+
+    #### Add or update
+
+    1. Fill in the inputs.
+    2. Click **Add field** (or **Update field** if you opened a row via ✏).
+    3. The field appears in the **Draft fields** list on the right.
+    4. The **fields JSON (raw)** textarea below the list reflects the
+       current draft. You can also paste / edit JSON there and click
+       **Apply JSON to draft** to overwrite the draft from the textarea.
+
+    #### Edit / delete existing fields
+
+    Each row in the draft list has two buttons on the right:
+
+    - **✏** — load the field into the form for editing. The button is
+      disabled for `zone` fields (use Annotate page instead).
+    - **✕** — remove the field from the draft.
+
+    #### Save
+
+    Scroll to the bottom **Save** section.
+
+    - **New name** — leave blank to keep the current template name.
+    - **Save mode**:
+      - `In-place (overwrite)` — replace the current version
+      - `New version` — keep the old version live while testing the new one
+    - Click **Save**.
+
+    A green banner at the top of the page confirms the save.
+    """)
+
+# Step 4b
+with st.expander("Step 4b — Add zone fields (Annotate page canvas)",
+                  expanded=False):
     st.markdown("""
     Navigate to **Annotate** in the sidebar.
 
-    1. Pick the **Template** from the searchable dropdown at the top, then select the **Page** from the next dropdown.
-    2. Click **Load OCR lines (preview)** — this runs OCR on the sample image
-       and overlays the detected text boxes.  Result is cached for the session.
-    3. Add fields using one of four methods:
-
-    **Zone field (draw on canvas):**
-    - Draw a rectangle around the value area on the image.
-    - The matched OCR lines appear in the preview panel.
-    - Tune `min_overlap` if the wrong lines are captured.
-    - Set field name and post-process, then click **Add zone field**.
-
-    **Anchor / Regex / Between field (edit raw JSON):**
-    - Scroll down to the **Edit raw JSON (optional)** textarea.
-    - Add your field object to the JSON array.
-    - Click **Apply JSON to draft** to update the draft fields list.
-    - See **Field Strategies Guide** for full JSON reference.
-    - Use **Between** when the value is a multi-line block bracketed by two
-      known sentences (e.g. an address paragraph between two section headers).
-
-    4. Repeat for each field.
-    5. Click **Save** when done.
-       - Choose **In-place (overwrite)** to overwrite the current version.
-       - Choose **New version** to keep the old version live while testing the new one.
+    1. Pick the **Template** from the searchable dropdown, then select the
+       **Page** from the next dropdown.
+    2. Click **Load OCR lines (preview)** — runs OCR on the sample image
+       and overlays the detected text boxes. Cached for the session.
+    3. **Draw a rectangle** around the value area on the image:
+       - The matched OCR lines appear in the preview panel.
+       - Tune `min_overlap` if the wrong lines are captured.
+       - (Optional) **Pick word(s) to keep** — narrow the capture to a
+         single word or contiguous slice.
+       - Set field name + post-process, then click **Add zone field**.
+    4. Repeat for each zone field.
+    5. Click **Save** at the bottom.
 
     **Tips:**
     - Click **✕** next to a field row to remove it from the draft.
-    - Change `display_order` (number input on the field form) to control output ordering.
-    - To test extraction without hitting the API, use the **Test extraction** section on the **Templates** page.
+    - To test extraction without hitting the API, use the
+      **Test extraction** section on the **Templates** page.
+    - For non-zone strategies (anchor / regex / between), use the form
+      editor on the Templates page (Step 4a).
     """)
 
 # Step 5
