@@ -45,7 +45,21 @@ def test_between_skip_after_token():
 def test_between_no_before_captures_to_end():
     lines = [L("header"), L("START"), L("line1"), L("line2")]
     val = find_between(lines, {"after": "START"})
-    assert val == "line1\nline2"
+    assert val == "line1 line2"
+
+
+def test_between_collapse_whitespace_default_true():
+    lines = [L("START NO. 49 KLANG"), L("MORE TEXT"), L("END")]
+    val = find_between(lines, {"after": "START", "before": "END"})
+    assert "\n" not in val
+    assert val == "NO. 49 KLANG MORE TEXT"
+
+
+def test_between_collapse_whitespace_opt_out():
+    lines = [L("START NO. 49 KLANG"), L("MORE TEXT"), L("END")]
+    val = find_between(lines, {"after": "START", "before": "END",
+                                "collapse_whitespace": False})
+    assert val == "NO. 49 KLANG\nMORE TEXT"
 
 
 def test_between_anchor_split_across_lines():

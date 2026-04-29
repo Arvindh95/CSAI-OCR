@@ -477,6 +477,7 @@ with st.expander("Between config reference"):
     | `before` | string | *(optional)* | Phrase that must appear **after** the value. Omit to capture to end of page. |
     | `ignore_case` | bool | `true` | Case-insensitive phrase matching |
     | `skip_after` | list | `[]` | Drop these leading tokens from the captured value (e.g. `["di"]` to skip a connector word) |
+    | `collapse_whitespace` | bool | `true` | Replace any run of whitespace (including OCR-line `\n`) with a single space, so multi-line captures come back as one clean line. Set `false` to keep `\n` between source lines. |
 
     **Tip:** keep `after` specific enough that it appears **only once** on the page.
     """)

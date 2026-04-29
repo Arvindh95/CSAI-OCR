@@ -20,6 +20,8 @@ def find_between(lines_on_page: list[dict], config: dict) -> str | None:
     if not m:
         return None
     val = m.group(1).strip()
+    if config.get("collapse_whitespace", True):
+        val = re.sub(r"\s+", " ", val)
     for tok in config.get("skip_after", []):
         val = re.sub(rf"^{re.escape(tok)}\s+", "", val, flags=flags)
     val = val.strip()
