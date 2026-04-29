@@ -1,9 +1,10 @@
 from app.templates.post_process import apply_post_process
 from app.templates.strategies.anchor import find_by_anchor
+from app.templates.strategies.between import find_between
 from app.templates.strategies.regex import find_by_regex
 from app.templates.strategies.zone import find_in_zone
 
-_STRATEGIES = {"anchor", "zone", "regex"}
+_STRATEGIES = {"anchor", "zone", "regex", "between"}
 
 
 def extract_with_template(lines: list[dict], template: dict) -> dict:
@@ -36,6 +37,8 @@ def extract_with_template(lines: list[dict], template: dict) -> dict:
                 )
             elif strategy == "regex":
                 raw = find_by_regex(page_lines, field["config"])
+            elif strategy == "between":
+                raw = find_between(page_lines, field["config"])
             else:
                 raise ValueError(f"unknown strategy: {strategy}")
             value = apply_post_process(raw, field.get("post_process"))

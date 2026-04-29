@@ -7,7 +7,7 @@ fix_url()
 st.title("Field Extraction Strategies Guide")
 
 st.markdown("""
-Use this guide to understand the three extraction strategies available when
+Use this guide to understand the four extraction strategies available when
 building templates.  You can **mix strategies** in a single template -- use
 whichever fits each field best.
 
@@ -451,6 +451,77 @@ with st.expander("Regex: worked examples"):
 
 st.divider()
 
+# ── Between ───────────────────────────────────────────────────────────────────
+st.header("4. Between (sentence anchors)")
+st.markdown("""
+**How it works:** Capture all text **after** one phrase and (optionally) **before**
+another. Phrases match across OCR line breaks — internal spaces become flexible
+whitespace, so an OCR break like `tempat utama\\nperniagaannya` still matches
+the phrase `"tempat utama perniagaannya"`.
+
+**Best for:** Multi-line free-form blocks bracketed by known sentences — e.g.
+addresses inside a paragraph, descriptions between two section headers.
+
+**vs Anchor:** anchor returns a *single* OCR line.  `between` returns
+*everything* between the two anchor phrases (multi-line OK).
+
+**vs Regex:** same idea, but you write phrases instead of regex.  No escaping,
+no `[\\s\\S]+?` tricks — friendlier when the content can contain `.` `,` etc.
+""")
+
+with st.expander("Between config reference"):
+    st.markdown("""
+    | Key | Type | Default | Description |
+    |-----|------|---------|-------------|
+    | `after` | string | *required* | Phrase that must appear **before** the value |
+    | `before` | string | *(optional)* | Phrase that must appear **after** the value. Omit to capture to end of page. |
+    | `ignore_case` | bool | `true` | Case-insensitive phrase matching |
+    | `skip_after` | list | `[]` | Drop these leading tokens from the captured value (e.g. `["di"]` to skip a connector word) |
+
+    **Tip:** keep `after` specific enough that it appears **only once** on the page.
+    """)
+
+with st.expander("Between: worked example — SSM address paragraph"):
+    st.markdown("**OCR lines (joined into one string with newlines):**")
+    st.code(
+        "Dengan ini diperakui bahawa Perniagaan yang dijalankan dengan nama\n"
+        "ROYAL KLANG CLUB\n"
+        "telah didaftarkan dari hari ini sehingga 31 MEI 2012 menurut peruntukan-\n"
+        "peruntukan Akta Pendaftaran Perniagaan 1956, dengan nombor yang ditunjukkan\n"
+        "di sini dan tempat utama perniagaannya NO. 49, JALAN KHABAR HIDUP\n"
+        "42, TAMAN PERUNDING 5, 41000, KLANG, NEGERI SEMBILAN.\n"
+        "Jenis Perniagaan\n"
+        "MENJUAL DAN MEMBEKAL ...",
+        language=None,
+    )
+    st.json({
+        "name": "alamat_perniagaan",
+        "page_index": 0,
+        "strategy": "between",
+        "config": {
+            "after": "tempat utama perniagaannya",
+            "before": "Jenis Perniagaan",
+            "skip_after": ["di"],
+        },
+        "post_process": "trim",
+        "required": True,
+        "display_order": 2,
+    })
+    st.success("Extracted → `NO. 49, JALAN KHABAR HIDUP\\n42, TAMAN PERUNDING 5, 41000, KLANG, NEGERI SEMBILAN.`")
+    st.caption("`after` and `before` are matched case-insensitively. Internal spaces in each phrase become "
+               "`\\s+` so OCR line breaks inside the phrase don't break the match.")
+
+with st.expander("Between: capture to end of page"):
+    st.markdown("Omit `before` to grab everything after the anchor:")
+    st.json({
+        "name": "footer_block",
+        "strategy": "between",
+        "config": {"after": "Disahkan oleh"},
+        "post_process": "trim",
+    })
+
+st.divider()
+
 # ── Post-process ──────────────────────────────────────────────────────────────
 st.header("Post-process options")
 st.markdown("""
@@ -519,11 +590,13 @@ st.markdown("""
 ```
 Is the field always in the same position on the page?
   YES -> Use ZONE (draw on canvas)
-  NO  -> Does the field have a recognizable label next to it?
-           YES -> Use ANCHOR (label + direction)
-           NO  -> Does the field have a unique pattern (number, date, code)?
-                    YES -> Use REGEX (pattern match)
-                    NO  -> Use ZONE with a large box + extract_regex
+  NO  -> Is the field a multi-line block sandwiched between two known sentences?
+           YES -> Use BETWEEN (after / before phrases)
+           NO  -> Does the field have a recognizable label next to it?
+                    YES -> Use ANCHOR (label + direction)
+                    NO  -> Does the field have a unique pattern (number, date, code)?
+                             YES -> Use REGEX (pattern match)
+                             NO  -> Use ZONE with a large box + extract_regex
 ```
 """)
 
