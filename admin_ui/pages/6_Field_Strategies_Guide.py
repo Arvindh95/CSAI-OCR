@@ -486,7 +486,7 @@ with st.expander("Between: worked example — SSM address paragraph"):
     st.markdown("**OCR lines (joined into one string with newlines):**")
     st.code(
         "Dengan ini diperakui bahawa Perniagaan yang dijalankan dengan nama\n"
-        "ROYAL KLANG CLUB\n"
+        "KEDAI RUNCIT MAJU JAYA\n"
         "telah didaftarkan dari hari ini sehingga 31 MEI 2012 menurut peruntukan-\n"
         "peruntukan Akta Pendaftaran Perniagaan 1956, dengan nombor yang ditunjukkan\n"
         "di sini dan tempat utama perniagaannya NO. 49, JALAN KHABAR HIDUP\n"
