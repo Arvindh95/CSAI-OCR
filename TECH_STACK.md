@@ -155,8 +155,8 @@ Inside the synchronous RQ worker, `_process(...)` is an async function driven by
 
 ## 6. Data layer
 
-### PostgreSQL 14+
-Primary store. Schema in `alembic/versions/*.sql`:
+### PostgreSQL 16
+Primary store (host runs PG 16.13). Schema in `alembic/versions/*.sql`:
 
 | Table | Purpose |
 | --- | --- |
@@ -212,7 +212,7 @@ Single vhost (`nginx/csai-ocr.conf`) terminates TLS, applies basic-auth and IP a
 
 | Upstream | Path |
 | --- | --- |
-| FastAPI on `:8000` | `/api/v1/*`, `/admin/v1/*`, `/health`, `/metrics` |
+| FastAPI on `:8003` | `/api/v1/*`, `/admin/v1/*`, `/health`, `/metrics` |
 | Streamlit on `:8503` | `/` (with basic-auth) |
 
 `proxy_cache` is enabled for `/media/` (preview thumbnails).
